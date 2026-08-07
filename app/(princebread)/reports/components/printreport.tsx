@@ -6,7 +6,7 @@ import { useReactToPrint } from "react-to-print";
 
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
-import type { Report } from "./reportslist";
+import type { Report } from "../../types";
 
 type Props = {
   report: Report;
@@ -18,7 +18,7 @@ export default function PrintReport({ report }: Props) {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Report-${report.transactionNumber}`,
+    documentTitle: `Report-${report.productId}-${report.periodStart}-${report.periodEnd}`,
   });
 
   return (

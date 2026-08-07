@@ -1,29 +1,6 @@
 import Link from "next/link";
 import PrintReport from "../components/printreport";
-
-export type TransactionRow = {
-  id: string;
-  date: string;
-  qty: number;
-  price: number;
-};
-
-export type Report = {
-  _id?: string;
-  productId: string;
-  productName: string;
-  productPrice: number;
-
-  transactionNumber: string;
-  periodStart: string;
-  periodEnd: string;
-
-  rows: TransactionRow[];
-
-  total: number;
-
-  createdAt?: string;
-};
+import type { Report } from "../../types";
 
 type ReportsListProps = {
   reports: Report[];
@@ -51,14 +28,17 @@ const ReportsList = ({ reports }: ReportsListProps) => {
         <div className="flex justify-center">
           <div className="w-full overflow-hidden rounded-lg border">
             <div className="grid grid-cols-[90px_240px_120px] border-b bg-prince-shadow/50 px-4 py-3 font-semibold">
-              <span>Transaction #</span>
+              <span>Report #</span>
               <span>Period</span>
               <span>Print?</span>
             </div>
 
             {reports.map((report, index) => (
               <div
-                key={report._id ?? report.transactionNumber}
+                key={
+                  report._id ??
+                  `${report.productId}-${report.periodStart}-${report.periodEnd}`
+                }
                 className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
               >
                 <span>{index + 1}</span>

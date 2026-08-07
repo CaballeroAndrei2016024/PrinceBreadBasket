@@ -6,13 +6,14 @@ import { useReactToPrint } from "react-to-print";
 
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
-import type { SalesHeader } from "./saleslist";
+import type { SalesHeader, Report } from "../../types";
 
 type Props = {
   sales: SalesHeader;
+  report: Report;
 };
 
-export default function PrintSalesHeader({ sales }: Props) {
+export default function PrintSalesHeader({ sales, report }: Props) {
   const [hover, setHover] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -102,10 +103,10 @@ export default function PrintSalesHeader({ sales }: Props) {
             </thead>
 
             <tbody>
-              {sales.rows.map((row) => (
+              {report.rows.map((row) => (
                 <tr key={row.id}>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.name}
+                    {report.productName}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
@@ -127,7 +128,7 @@ export default function PrintSalesHeader({ sales }: Props) {
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: ₱{sales.total.toFixed(2)}
+            Grand Total: ₱{report.total.toFixed(2)}
           </h2>
         </div>
       </div>

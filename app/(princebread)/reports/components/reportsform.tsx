@@ -213,7 +213,11 @@ const SalesReportForm = () => {
   };
 
   const removeRow = (rowId: string) => {
-    setRows((currentRows) => currentRows.filter((row) => row.id !== rowId));
+    setRows((currentRows) =>
+      currentRows.length > 1
+        ? currentRows.filter((row) => row.id !== rowId)
+        : currentRows,
+    );
   };
 
   return (

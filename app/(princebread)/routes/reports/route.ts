@@ -24,9 +24,15 @@ export async function GET() {
     const reports = await reportsCollection
       .find({})
       .project({
-        _id: 0,
+        _id: 1,
+        transactionNumber: 1,
         productId: 1,
         productName: 1,
+        productPrice: 1,
+        periodStart: 1,
+        periodEnd: 1,
+        total: 1,
+        rows: 1,
       })
       .toArray();
     // Serialize ObjectId to string so JSON can be sent to the client

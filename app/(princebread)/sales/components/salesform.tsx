@@ -3,16 +3,21 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-type ProductOption = {
+type ReportOption = {
   _id: string;
-  productId?: string;
+  transactionNumber: string;
+  productId: string;
   productName: string;
   productPrice: number;
+  periodStart: string;
+  periodEnd: string;
+  total: number;
+  rows: TransactionRow[];
 };
 
 type TransactionRow = {
   id: string;
-  name: string;
+  date: string;
   qty: number;
   price: number;
 };
@@ -26,28 +31,35 @@ const SalesHeaderForm = () => {
   const [customerName, setCustomerName] = useState("");
   const [transactionNumber, setTransactionNumber] = useState("");
 
-  // Product selection
-  const [products, setProducts] = useState<ProductOption[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState("");
-
   // Transaction rows
   const [rows, setRows] = useState<TransactionRow[]>([
-    { id: "row-1", name: "", qty: 0, price: 0 },
+    { id: "row-1", date: "", qty: 0, price: 0 },
   ]);
+
+  // Report row
+
+  const [reports, setReports] = useState<ReportOption[]>([]);
+  const [selectedReport, setSelectedReport] = useState("");
+
+  const selectedReportData = useMemo(
+    () => reports.find((report) => report.transactionNumber === selectedReport),
+    [reports, selectedReport],
+  );
+
+  //Dates.
+
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedProduct = useMemo(
-    () => products.find((product) => product.productId === selectedProductId),
-    [products, selectedProductId],
-  );
-
   const displayRows = rows.map((row) => ({
     ...row,
-    price: row.price === 0 ? (selectedProduct?.productPrice ?? 0) : row.price,
+    price:
+      row.price === 0 ? (selectedReportData?.productPrice ?? 0) : row.price,
   }));
 
   const grandTotal = displayRows.reduce(
@@ -92,8 +104,8 @@ const SalesHeaderForm = () => {
       return;
     }
 
-    if (rows.some((row) => !row.name.trim())) {
-      setErrorMessage("All transaction rows must have a product name.");
+    if (rows.some((row) => !row.date.trim())) {
+      setErrorMessage("All transaction rows must have a date.");
       setIsSubmitting(false);
       return;
     }
@@ -104,12 +116,25 @@ const SalesHeaderForm = () => {
       return;
     }
 
+    if (!selectedReport) {
+      setErrorMessage("Please select a report.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Build payload matching SalesSchema
     const salesPayload = {
       customerCode: customerCode.trim(),
       customerName: customerName.trim(),
       transactionNumber: transactionNumber.trim(),
+      reportId: selectedReportData?._id,
+      reportTransaction: selectedReport,
       date,
+      productId: selectedReportData?.productId,
+
+      periodStart,
+      periodEnd,
+
       rows: displayRows,
       total: grandTotal,
     };
@@ -143,7 +168,10 @@ const SalesHeaderForm = () => {
       setCustomerCode("");
       setCustomerName("");
       setTransactionNumber("");
-      setRows([{ id: "row-1", name: "", qty: 0, price: 0 }]);
+      setRows([{ id: "row-1", date: "", qty: 0, price: 0 }]);
+      setSelectedReport("");
+      setPeriodStart("");
+      setPeriodEnd("");
       router.push("/sales/primary");
     } catch (error) {
       console.error("Error during form submission:", error);
@@ -157,50 +185,65 @@ const SalesHeaderForm = () => {
     }
   };
 
-  //Dropdown list of products for the sales header.
+  //Dropdown list of reports for the sales header.
   useEffect(() => {
-    async function loadProducts() {
+    async function loadReports() {
       try {
-        const response = await fetch("/routes/products", { cache: "no-store" });
+        const response = await fetch("/routes/reports", { cache: "no-store" });
         if (!response.ok) {
-          throw new Error("Failed to load product options");
+          throw new Error("Failed to load reports options");
         }
         const result = await response.json();
-        const options = (result?.products ?? []).map(
-          (product: ProductOption) => ({
-            _id: product._id,
-            productId: product.productId ?? product.productName ?? product._id,
-            productName: product.productName ?? "",
+        const options = (result?.reports ?? []).map(
+          (reports: ReportOption) => ({
+            _id: reports._id,
+            transactionNumber: reports.transactionNumber ?? reports._id,
+            productId: reports.productId ?? reports.productName ?? reports._id,
+            productName: reports.productName ?? "",
             productPrice:
-              typeof product.productPrice === "number"
-                ? product.productPrice
-                : Number(product.productPrice) || 0,
+              typeof reports.productPrice === "number"
+                ? reports.productPrice
+                : Number(reports.productPrice) || 0,
+            periodStart: reports.periodStart ?? "",
+            periodEnd: reports.periodEnd ?? "",
+            total: reports.total ?? 0,
+            rows: reports.rows ?? [],
           }),
         );
-        setProducts(options);
+        setReports(options);
         if (options.length > 0) {
-          setSelectedProductId(options[0].productId ?? "");
+          const first = options[0];
+
+          setSelectedReport(first.transactionNumber);
+          setPeriodStart(first.periodStart);
+          setPeriodEnd(first.periodEnd);
+
+          setRows(
+            first.rows.length > 0
+              ? first.rows.map((row: TransactionRow, index: number) => ({
+                  id: `row-${index + 1}`,
+                  date: row.date,
+                  qty: row.qty,
+                  price: row.price,
+                }))
+              : [
+                  {
+                    id: "row-1",
+                    date: "",
+                    qty: 0,
+                    price: first.productPrice,
+                  },
+                ],
+          );
         }
       } catch (error) {
         console.error(error);
       }
     }
-    loadProducts();
+    loadReports();
   }, []);
 
-  //The syntax to add, remove, and update rows in the transaction table.
-
-  const addRow = () => {
-    setRows((currentRows) => [
-      ...currentRows,
-      {
-        id: `row-${currentRows.length + 1}`,
-        name: "",
-        qty: 0,
-        price: selectedProduct?.productPrice ?? 0,
-      },
-    ]);
-  };
+  //The syntax to remove, and update rows in the transaction table.
 
   const updateRow = (rowId: string, changes: Partial<TransactionRow>) => {
     setRows((currentRows) =>
@@ -211,7 +254,11 @@ const SalesHeaderForm = () => {
   };
 
   const removeRow = (rowId: string) => {
-    setRows((currentRows) => currentRows.filter((row) => row.id !== rowId));
+    setRows((currentRows) =>
+      currentRows.length > 1
+        ? currentRows.filter((row) => row.id !== rowId)
+        : currentRows,
+    );
   };
 
   return (
@@ -277,6 +324,20 @@ const SalesHeaderForm = () => {
               onChange={(e) => setCustomerName(e.target.value)}
               className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             />
+            <label
+              htmlFor="transactionnumber"
+              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+            >
+              Transaction Number:
+            </label>
+
+            <input
+              id="transactionnumber"
+              type="text"
+              value={transactionNumber}
+              onChange={(e) => setTransactionNumber(e.target.value)}
+              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+            />
           </div>
 
           {/* This section is the 5-column input fields that input data for products.
@@ -301,7 +362,7 @@ const SalesHeaderForm = () => {
                     }}
                   >
                     <th className="border border-prince-yellow p-2 text-left">
-                      Product Name
+                      Product Date:
                     </th>
                     <th className="border border-prince-yellow p-2 text-center w-24">
                       Qty
@@ -326,23 +387,7 @@ const SalesHeaderForm = () => {
                           fontFamily: "var(--font-body)",
                         }}
                       >
-                        <select
-                          value={row.name}
-                          onChange={(e) =>
-                            updateRow(row.id, { name: e.target.value })
-                          }
-                          className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
-                        >
-                          <option value="">Select a product</option>
-                          {products.map((product) => (
-                            <option
-                              key={product._id}
-                              value={product.productName}
-                            >
-                              {product.productId} - {product.productName}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="text-center">{row.date}</div>
                       </td>
                       <td className="border border-prince-yellow p-2 text-center">
                         <input
@@ -350,7 +395,7 @@ const SalesHeaderForm = () => {
                           value={row.qty}
                           onChange={(e) =>
                             updateRow(row.id, {
-                              qty: parseFloat(e.target.value),
+                              qty: Number(e.target.value) || 0,
                             })
                           }
                           min="0"
@@ -362,11 +407,7 @@ const SalesHeaderForm = () => {
                           type="number"
                           step="0.01"
                           value={row.price}
-                          onChange={(e) =>
-                            updateRow(row.id, {
-                              price: parseFloat(e.target.value),
-                            })
-                          }
+                          readOnly
                           min="0"
                           className="w-full rounded-md border border-gray-300 p-1 text-slate-700 text-center"
                         />
@@ -389,17 +430,6 @@ const SalesHeaderForm = () => {
               </table>
             </div>
 
-            <button
-              type="button"
-              onClick={addRow}
-              className="mb-4 bg-prince-green text-white px-4 py-2 rounded-md hover:bg-prince-orange transition-colors"
-              style={{
-                fontFamily: "var(--font-body)",
-              }}
-            >
-              + Add Item
-            </button>
-
             <div
               className="flex justify-end bg-prince-green/20 p-3 rounded-md"
               style={{
@@ -418,24 +448,93 @@ const SalesHeaderForm = () => {
           </div>
 
           <label
-            htmlFor="transaction"
+            htmlFor="report-transaction"
             className="mb-2 mt-4 font-semibold text-prince-shadow text-shadow-sm"
             style={{
               fontFamily: "var(--font-heading)",
             }}
           >
-            Transaction Number:
+            Report Number:
           </label>
-          <input
-            type="text"
-            id="transaction"
-            value={transactionNumber}
-            onChange={(e) => setTransactionNumber(e.target.value)}
-            className="w-full rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            style={{
-              fontFamily: "var(--font-body)",
+          <select
+            id="report-transaction"
+            name="report-id"
+            value={selectedReport}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedReport(value);
+
+              const report = reports.find((r) => r.transactionNumber === value);
+
+              if (!report) return;
+
+              setPeriodStart(report.periodStart);
+              setPeriodEnd(report.periodEnd);
+
+              setRows(
+                report.rows.length > 0
+                  ? report.rows.map((row, index) => ({
+                      id: `row-${index + 1}`,
+                      date: row.date,
+                      qty: row.qty,
+                      price: row.price,
+                    }))
+                  : [
+                      {
+                        id: "row-1",
+                        date: "",
+                        qty: 0,
+                        price: report.productPrice,
+                      },
+                    ],
+              );
             }}
-          />
+            className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+          >
+            {reports.map((reports) => (
+              <option
+                key={reports.transactionNumber ?? reports._id}
+                value={reports.transactionNumber ?? reports._id}
+              >
+                {reports.transactionNumber} - {reports.periodStart} to{" "}
+                {reports.periodEnd}
+              </option>
+            ))}
+          </select>
+
+          <div className="mt-4 grid grid-cols-2 gap-4 w-full">
+            <div className="flex flex-col">
+              <label
+                htmlFor="periodStart"
+                className="mb-2 font-semibold text-prince-shadow/50"
+              >
+                Period Start:
+              </label>
+              <input
+                id="periodStart"
+                type="date"
+                value={periodStart}
+                readOnly
+                className="rounded-md border border-prince-yellow p-2 text-slate-700 bg-gray-100"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label
+                htmlFor="periodEnd"
+                className="mb-2 font-semibold text-prince-shadow/50"
+              >
+                Period End:
+              </label>
+              <input
+                id="periodEnd"
+                type="date"
+                value={periodEnd}
+                readOnly
+                className="rounded-md border border-prince-yellow p-2 text-slate-700 bg-gray-100"
+              />
+            </div>
+          </div>
 
           {errorMessage && (
             <div

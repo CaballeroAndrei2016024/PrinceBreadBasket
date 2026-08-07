@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/libauth";
 import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
-import ReportsList, { type Report } from "../components/reportslist";
+import ReportsList from "../components/reportslist";
+import type { Report } from "../../types";
 
 export const revalidate = 5; //5 second revalidation.
 

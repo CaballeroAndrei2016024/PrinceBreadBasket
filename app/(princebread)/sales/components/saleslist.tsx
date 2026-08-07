@@ -1,35 +1,18 @@
 import Link from "next/link";
 import PrintSalesHeader from "./printsales";
-
-export type TransactionRow = {
-  id: string;
-  name: string;
-  qty: number;
-  price: number;
-};
-
-export type SalesHeader = {
-  _id?: string;
-  productId: string;
-  customerCode: string;
-  customerName: string;
-  productPrice: number;
-
-  transactionNumber: string;
-  date: string;
-
-  rows: TransactionRow[];
-
-  total: number;
-
-  createdAt?: string;
-};
+import type { SalesHeader, Report } from "../../types";
 
 type SalesHeaderListProps = {
   sales: SalesHeader[];
+  reports: Report[];
 };
 
-const SalesHeaderList = ({ sales }: SalesHeaderListProps) => {
+const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
+  const reportsById = new Map(
+    reports
+      .filter((report) => report._id)
+      .map((report) => [String(report._id), report]),
+  );
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -57,20 +40,38 @@ const SalesHeaderList = ({ sales }: SalesHeaderListProps) => {
               <span>Print?</span>
             </div>
 
-            {sales.map((sales, index) => (
-              <div
-                key={sales._id ?? sales.customerCode}
-                className="grid grid-cols-[90px_240px_120px_90px] items-center border-b px-4 py-3"
-              >
-                <span>{sales.customerCode}</span>
+            {sales.map((sale) => {
+              const report = reportsById.get(String(sale.reportId));
 
-                <span>{sales.customerName}</span>
+              if (!report) {
+                return (
+                  <div
+                    key={sale._id ?? sale.transactionNumber}
+                    className="grid grid-cols-[90px_240px_120px_90px] items-center border-b px-4 py-3"
+                  >
+                    <span>{sale.customerCode}</span>
+                    <span>{sale.customerName}</span>
+                    <span>{new Date(sale.date).toLocaleDateString()}</span>
+                    <span className="text-red-500">Missing Report</span>
+                  </div>
+                );
+              }
 
-                <span>{new Date(sales.date).toLocaleDateString()} </span>
+              return (
+                <div
+                  key={sale._id ?? sale.transactionNumber}
+                  className="grid grid-cols-[90px_240px_120px_90px] items-center border-b px-4 py-3"
+                >
+                  <span>{sale.customerCode}</span>
 
-                <PrintSalesHeader sales={sales} />
-              </div>
-            ))}
+                  <span>{sale.customerName}</span>
+
+                  <span>{new Date(sale.date).toLocaleDateString()}</span>
+
+                  <PrintSalesHeader sales={sale} report={report} />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

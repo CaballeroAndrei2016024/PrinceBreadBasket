@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { getSalesClient } from "@/lib/mongodb";
+import { getSalesClient, getReportsClient } from "@/lib/mongodb";
 import { SalesSchema } from "@/lib/validators/sales";
 
 export const runtime = "nodejs";
@@ -75,6 +75,30 @@ export async function POST(request: NextRequest) {
     }
     const sales = validationResult.data;
 
+    const reportsClient = await getReportsClient();
+
+    if (!reportsClient) {
+      throw new Error("Reports database client could not be initialized.");
+    }
+
+    const reportsDb = reportsClient.db(env.MONGODB_REPORTS_DB || "reports");
+
+    const reportsCollection = reportsDb.collection("reports");
+
+    const report = await reportsCollection.findOne({
+      transactionNumber: sales.reportTransaction,
+    });
+
+    if (!report) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Report not found.",
+        },
+        { status: 404 },
+      );
+    }
+
     const client = await getSalesClient();
     // Check what URI/DB is running.
     try {
@@ -91,10 +115,32 @@ export async function POST(request: NextRequest) {
     const db = client.db(env.MONGODB_SALES_DB || "sales");
     const salesCollection = db.collection("sales");
 
-    const insertedSales = await salesCollection.insertOne({
-      ...sales,
+    const salesDocument = {
+      transactionNumber: sales.transactionNumber,
+
+      // Report ID.
+      reportId: report._id.toString(),
+
+      // Business transaction number from the Report Sheet as referrence.
+      reportTransaction: sales.reportTransaction,
+
+      customerCode: sales.customerCode,
+      customerName: sales.customerName,
+      date: sales.date,
+
+      rows: sales.rows,
+      total: sales.total,
+      productId: report.productId,
+      productName: report.productName,
+      productPrice: report.productPrice,
+
+      periodStart: report.periodStart,
+      periodEnd: report.periodEnd,
+
       createdAt: new Date(),
-    });
+    };
+
+    const insertedSales = await salesCollection.insertOne(salesDocument);
 
     // Debug: Check where data is written.
     try {
