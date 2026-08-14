@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { updateSession } from "@/lib/libauth";
+
+export const runtime = "nodejs";
 
 export async function middleware(request: NextRequest) {
-  const session = request.cookies.get("session")?.value;
-  const response = NextResponse.next();
-  if (session) {
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-    response.cookies.set("session", session, {
-      httpOnly: true,
-      expires,
-    });
-  }
-  return response;
+  return updateSession(request);
 }
+
+// Run middleware on all routes EXCEPT static assets and API internals
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|public).*)"],
+};

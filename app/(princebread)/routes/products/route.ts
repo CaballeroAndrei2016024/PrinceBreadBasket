@@ -28,6 +28,8 @@ export async function GET() {
         productId: 1,
         productName: 1,
         productPrice: 1,
+        productImage: 1,
+        createdAt: 1,
       })
       .toArray();
     // Serialize ObjectId to string so JSON can be sent to the client

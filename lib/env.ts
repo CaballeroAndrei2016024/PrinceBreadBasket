@@ -1,5 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
+import fs from "fs";
+import path from "path";
 
 function parseEnvFile(filePath: string) {
   if (!fs.existsSync(filePath)) {
@@ -54,7 +54,16 @@ export function loadEnvFile() {
 
 loadEnvFile();
 
+//Configure secret key for admin verification.
+const secretKey = process.env.AUTH_SECRET;
+
+if (!secretKey) {
+  throw new Error("No secret key? Really?");
+}
+
+//Environmental variables for MongoDB and authentication.
 export const env = {
+  AUTH_SECRET: secretKey,
   MONGODB_AUTH_URI: process.env.MONGODB_AUTH_URI,
   MONGODB_AUTH_DB: process.env.MONGODB_AUTH_DB,
   MONGODB_PRODUCTS_URI: process.env.MONGODB_PRODUCTS_URI,
@@ -65,4 +74,6 @@ export const env = {
   MONGODB_SALES_DB: process.env.MONGODB_SALES_DB,
   MONGODB_LOGS_URI: process.env.MONGODB_LOGS_URI,
   MONGODB_LOGS_DB: process.env.MONGODB_LOGS_DB,
+  MONGODB_BUSINESS_URI: process.env.MONGODB_BZ_SETTINGS_URI,
+  MONGODB_BUSINESS_DB: process.env.MONGODB_BZ_SETTINGS_DB,
 };

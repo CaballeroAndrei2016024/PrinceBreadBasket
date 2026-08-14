@@ -172,7 +172,7 @@ const SalesHeaderForm = () => {
       setSelectedReport("");
       setPeriodStart("");
       setPeriodEnd("");
-      router.push("/sales/primary");
+      router.push("/sales");
     } catch (error) {
       console.error("Error during form submission:", error);
       setErrorMessage(

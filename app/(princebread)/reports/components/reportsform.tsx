@@ -147,7 +147,7 @@ const SalesReportForm = () => {
       setTransactionNumber("");
       setPeriodStart("");
       setPeriodEnd("");
-      router.push("/reports/primary");
+      router.push("/reports");
     } catch (error) {
       console.error("Error during form submission:", error);
       setErrorMessage(

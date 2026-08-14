@@ -73,7 +73,7 @@ const SalesLogsList = ({ logs }: SalesLogListProps) => {
         </div>
       )}
       <Link
-        href="/logs"
+        href="/logs/formpage"
         className="
 block
 w-full

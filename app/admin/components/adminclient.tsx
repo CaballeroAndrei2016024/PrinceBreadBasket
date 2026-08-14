@@ -4,13 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import AdminMobileDrawer from "./admindrawer";
-
-type NavItem = {
-  name: string;
-  icon: string;
-  href?: string;
-  action?: "logout";
-};
+import { NavItem } from "../types";
 
 type AdminNavbarClientProps = {
   items: NavItem[];
@@ -31,6 +25,9 @@ export default function AdminNavbarClient({
       >
         <div className="mx-auto flex h-16 items-center justify-between px-4">
           <div className="hidden items-center gap-8 md:flex">
+            <div className="hidden sm:block">
+              <p className="text-xs text-white/80">Admin Module</p>
+            </div>
             {items.map((item) =>
               item.href ? (
                 <Link
@@ -82,7 +79,7 @@ export default function AdminNavbarClient({
             className="rounded-md p-2 text-white hover:bg-white/10 md:hidden"
             aria-label="Open Menu"
           >
-            ☰ TEST!
+            ☰
           </button>
         </div>
       </nav>

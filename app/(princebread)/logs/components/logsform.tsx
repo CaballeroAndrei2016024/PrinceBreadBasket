@@ -249,7 +249,7 @@ const SalesLogForm = () => {
       setAdditionRows([createEmptyRow()]);
       setEndingRows([createEmptyRow()]);
 
-      router.push("/logs/primary");
+      router.push("/logs");
     } catch (error) {
       console.error("Error during form submission:", error);
       setErrorMessage(

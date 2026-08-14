@@ -55,7 +55,7 @@ const ReportsList = ({ reports }: ReportsListProps) => {
         </div>
       )}
       <Link
-        href="/reports"
+        href="/reports/formpage"
         className="
 block
 w-full

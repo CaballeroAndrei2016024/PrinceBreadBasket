@@ -31,6 +31,9 @@ export default function NavbarClient({
       >
         <div className="mx-auto flex h-16 items-center justify-between px-4">
           <div className="hidden items-center gap-8 md:flex">
+            <div className="hidden sm:block">
+              <p className="text-xs text-white/80">Client Module</p>
+            </div>
             {items.map((item) =>
               item.href ? (
                 <Link
@@ -82,7 +85,7 @@ export default function NavbarClient({
             className="rounded-md p-2 text-white hover:bg-white/10 md:hidden"
             aria-label="Open Menu"
           >
-            ☰ TEST!
+            ☰
           </button>
         </div>
       </nav>

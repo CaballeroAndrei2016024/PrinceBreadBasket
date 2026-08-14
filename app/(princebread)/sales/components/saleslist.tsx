@@ -76,7 +76,7 @@ const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
         </div>
       )}
       <Link
-        href="/sales"
+        href="/sales/formpage"
         className="
 block
 w-full

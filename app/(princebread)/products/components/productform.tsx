@@ -74,7 +74,7 @@ const ProductRegistrationFormPage = () => {
       formElement.reset();
       setImagePreview(null);
       setFileName(null);
-      router.push("/products/primary");
+      router.push("/products");
     } catch (error) {
       console.error("Form error:", error);
       setErrorMessage(
@@ -104,6 +104,7 @@ const ProductRegistrationFormPage = () => {
           method="POST"
           className="flex w-full max-w-3xl flex-col items-center rounded-xl border border-prince-yellow border-2 bg-prince-green-80 p-6 shadow-lg"
         >
+          {/*Product Image Section */}
           <div className="flex flex-col w-full text-left">
             <label
               htmlFor="product-image"
@@ -156,6 +157,8 @@ const ProductRegistrationFormPage = () => {
               />
             </div>
           )}
+
+          {/*Product Info Section */}
           <div
             className="flex flex-col w-full justify-center mt-4"
             style={{

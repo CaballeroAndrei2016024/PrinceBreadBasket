@@ -43,7 +43,7 @@ export default async function RegisterPage() {
               fontFamily: "var(--font-heading)",
             }}
           >
-            Register to Prince Bread App!
+            Register to the app!
           </h1>
           <input
             name="username"
@@ -84,7 +84,7 @@ px-[30px]
 py-5
 text-center
 text-[20px]
-text-white
+text-black
 cursor-crosshair
 hover:italic
 hover:text-prince-orange

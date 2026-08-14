@@ -1,14 +1,44 @@
 import { redirect } from "next/navigation";
 import { logout } from "@/lib/libauth";
 import AdminNavbarClient from "./adminclient";
+import type { NavItem } from "../types";
 
-const NavBarItems = [
-  { name: "Dashboard", href: "/", icon: "/newhome.png" },
-  { name: "Products", href: "/products", icon: "/newproducts.png" },
-  { name: "Sales", href: "/sales", icon: "/newsales.png" },
-  { name: "Reports", href: "/reports", icon: "/newreports.png" },
-  { name: "Logs", href: "/logs", icon: "/newlogs.png" },
-  { name: "Logout", icon: "/logout.png", action: "logout" as const },
+const AdminBarItems: NavItem[] = [
+  {
+    name: "Dashboard",
+    href: "/admin",
+    icon: "/newhome.png",
+  },
+  {
+    name: "Users",
+    href: "/admin/users",
+    icon: "/settings.png",
+  },
+  {
+    name: "Products",
+    href: "/admin/products",
+    icon: "/newproducts.png",
+  },
+  {
+    name: "Sales",
+    href: "/admin/sales",
+    icon: "/newsales.png",
+  },
+  {
+    name: "Reports",
+    href: "/admin/reports",
+    icon: "/newreports.png",
+  },
+  {
+    name: "Logs",
+    href: "/admin/logs",
+    icon: "/newlogs.png",
+  },
+  {
+    name: "Logout",
+    icon: "/logout.png",
+    action: "logout",
+  },
 ];
 
 async function handleLogout() {
@@ -18,5 +48,7 @@ async function handleLogout() {
 }
 
 export default function AdminNavbar() {
-  return <AdminNavbarClient items={NavBarItems} logoutAction={handleLogout} />;
+  return (
+    <AdminNavbarClient items={AdminBarItems} logoutAction={handleLogout} />
+  );
 }

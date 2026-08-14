@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { Cinzel, Nunito } from "next/font/google";
+import { Cinzel, Nunito, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -34,6 +36,7 @@ export default function RootLayout({
         cinzel.variable,
         nunito.variable,
         "font-sans",
+        geist.variable,
       )}
     >
       <body className="min-h-full flex flex-col">{children}</body>

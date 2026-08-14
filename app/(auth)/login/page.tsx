@@ -41,7 +41,7 @@ export default async function LoginPage() {
               fontFamily: "var(--font-heading)",
             }}
           >
-            Login to Prince Bread App!
+            Login to the app!
           </h1>
           <input
             name="email"
@@ -100,7 +100,7 @@ px-[30px]
 py-5
 text-center
 text-[20px]
-text-white
+text-black
 cursor-crosshair
 hover:italic
 hover:text-prince-orange
@@ -111,6 +111,32 @@ hover:font-mono
             }}
           >
             Register
+          </Link>
+          <Link
+            href="/admin/login"
+            className="
+block
+w-full
+box-border
+rounded-md
+border-2
+border--prince-green/50
+bg-prince-yellow/50
+px-[30px]
+py-5
+text-center
+text-[20px]
+text-black
+cursor-crosshair
+hover:italic
+hover:text-prince-green
+hover:font-mono
+"
+            style={{
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            Login as Admin
           </Link>
         </form>
       </div>

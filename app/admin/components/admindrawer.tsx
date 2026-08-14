@@ -2,13 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
-type NavItem = {
-  name: string;
-  icon: string;
-  href?: string;
-  action?: "logout";
-};
+import { NavItem } from "../types";
 
 type Props = {
   isOpen: boolean;
@@ -65,23 +59,20 @@ export default function AdminMobileDrawer({
                   className="flex w-full items-center gap-4 rounded-md bg-prince-green px-6 py-4 text-slate-50 transition hover:bg-prince-orange"
                   aria-label="Logout"
                 >
-                  <Image
-                    src={item.icon}
-                    alt={item.name}
-                    width={28}
-                    height={28}
-                  />
+                  <Image src={item.icon} alt="" width={28} height={28} />
+
                   <span className="font-semibold">{item.name}</span>
                 </button>
               </form>
             ) : (
               <Link
                 key={item.href ?? item.name}
-                href={item.href ?? "/"}
+                href={item.href ?? "/admin"}
                 onClick={onClose}
                 className="flex items-center gap-4 px-6 py-4 text-slate-900 transition hover:bg-prince-green"
               >
-                <Image src={item.icon} alt={item.name} width={28} height={28} />
+                <Image src={item.icon} alt="" width={28} height={28} />
+
                 <span className="font-semibold">{item.name}</span>
               </Link>
             ),
