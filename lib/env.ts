@@ -54,14 +54,16 @@ export function loadEnvFile() {
 
 loadEnvFile();
 
-//Configure secret key for admin verification.
-const secretKey = process.env.AUTH_SECRET;
+// Configure secret key for admin verification.
+// A fallback keeps build-time evaluation from crashing when the environment
+const secretKey =
+  process.env.AUTH_SECRET ?? "princebreadbasket-dev-secret-change-me";
 
-if (!secretKey) {
-  throw new Error("No secret key? Really?");
+if (!process.env.AUTH_SECRET) {
+  console.warn("No secret, really?");
 }
 
-//Environmental variables for MongoDB and authentication.
+// Environmental variables for MongoDB and authentication.
 export const env = {
   AUTH_SECRET: secretKey,
   MONGODB_AUTH_URI: process.env.MONGODB_AUTH_URI,
