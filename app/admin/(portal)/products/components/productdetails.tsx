@@ -101,7 +101,7 @@ function ProductDetail(props: ProductDetailProps) {
       setSelectedFile(null);
       setImagePreview(null);
 
-      router.push("/admin/products/primary");
+      router.push("/admin/products");
     } catch (error) {
       console.error("Product update failed:", error);
 
@@ -143,7 +143,7 @@ function ProductDetail(props: ProductDetailProps) {
         throw new Error(result?.message || "Failed to delete product.");
       }
 
-      router.push("/admin/products/primary");
+      router.push("/admin/products");
     } catch (error) {
       console.error("Product deletion failed:", error);
 
