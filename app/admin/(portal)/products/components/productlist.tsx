@@ -92,7 +92,7 @@ const AdminProductsList = ({ products }: ProductsListProps) => {
         </div>
       )}
       <Link
-        href="/admin/products"
+        href="/admin/products/formpage"
         className="
 block
 w-full

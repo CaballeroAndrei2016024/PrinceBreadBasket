@@ -1,4 +1,4 @@
-import BusinessSettings from "./businesssettings";
+import BusinessSettings from "../businesssettings";
 
 export default function BusinessSettingsPage() {
   return (

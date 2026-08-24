@@ -33,6 +33,7 @@ export async function GET() {
         periodEnd: 1,
         total: 1,
         rows: 1,
+        createdAt: 1,
       })
       .toArray();
     // Serialize ObjectId to string so JSON can be sent to the client

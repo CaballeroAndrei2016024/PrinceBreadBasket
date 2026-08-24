@@ -7,12 +7,12 @@ const AdminBarItems: NavItem[] = [
   {
     name: "Dashboard",
     href: "/admin",
-    icon: "/newhome.png",
+    icon: "/dashboard.png",
   },
   {
     name: "Users",
     href: "/admin/users",
-    icon: "/settings.png",
+    icon: "/user.png",
   },
   {
     name: "Products",

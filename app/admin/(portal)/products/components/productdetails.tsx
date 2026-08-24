@@ -96,8 +96,7 @@ function ProductDetail(props: ProductDetailProps) {
         throw new Error(firstError);
       }
 
-      setMessage(result?.message || "Product updated successfully.");
-
+      //What to do after update is finished.
       setIsEditing(false);
       setSelectedFile(null);
       setImagePreview(null);
@@ -168,7 +167,7 @@ function ProductDetail(props: ProductDetailProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl text-center">
+    <section className="mx-auto w-full max-w-3xl text-center border-4 border-prince-shadow/50">
       {displayedImageSrc ? (
         <Image
           width={400}

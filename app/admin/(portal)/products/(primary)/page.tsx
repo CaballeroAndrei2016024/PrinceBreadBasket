@@ -28,7 +28,7 @@ async function getProducts() {
   })) as AdminProduct[];
 }
 
-export default async function ProductPage() {
+export default async function AdminProductPage() {
   const session = await getCurrentAdmin();
 
   if (!session) {

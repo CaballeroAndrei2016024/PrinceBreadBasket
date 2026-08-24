@@ -69,7 +69,12 @@ const UserList = ({ users, currentUserEmail }: UserListProps) => {
                       </button>
                     </form>
                   ) : isCurrentUser ? (
-                    <span className="text-sm text-slate-500">
+                    <span
+                      className="text-sm text-slate-500"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                      }}
+                    >
                       You cannot demote yourself.
                     </span>
                   ) : (

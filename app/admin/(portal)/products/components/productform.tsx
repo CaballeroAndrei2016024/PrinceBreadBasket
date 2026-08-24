@@ -74,7 +74,7 @@ const AdminProductRegistrationFormPage = () => {
       formElement.reset();
       setImagePreview(null);
       setFileName(null);
-      router.push("/admin/products/primary");
+      router.push("/admin/products");
     } catch (error) {
       console.error("Form error:", error);
       setErrorMessage(

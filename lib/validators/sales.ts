@@ -19,6 +19,8 @@ export const SalesSchema = z.object({
   reportTransaction: z.string().min(1, "Report transaction is required"),
 
   productId: z.string().min(1, "Product ID is required"),
+  productName: z.string().min(1, "Product name is required"),
+  productPrice: z.number().min(0, "Product price cannot be negative"),
 
   date: z.string().min(1, "Date is required"),
 

@@ -59,7 +59,7 @@ const SalesLogsList = ({ logs }: SalesLogListProps) => {
                 key={log._id ?? log.transactionNumber}
                 className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
               >
-                <span>{index + 1}</span>
+                <span>{log.transactionNumber}</span>
 
                 <span>
                   {new Date(log.periodStart).toLocaleDateString()} -{" "}

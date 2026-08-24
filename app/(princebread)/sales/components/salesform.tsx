@@ -122,19 +122,27 @@ const SalesHeaderForm = () => {
       return;
     }
 
+    const report = selectedReportData;
+
+    if (!report) {
+      setErrorMessage("Selected report could not be found.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Build payload matching SalesSchema
     const salesPayload = {
       customerCode: customerCode.trim(),
       customerName: customerName.trim(),
       transactionNumber: transactionNumber.trim(),
-      reportId: selectedReportData?._id,
-      reportTransaction: selectedReport,
+      reportId: report._id,
+      reportTransaction: report.transactionNumber,
       date,
-      productId: selectedReportData?.productId,
-
+      productId: report.productId,
+      productName: report.productName,
+      productPrice: report.productPrice,
       periodStart,
       periodEnd,
-
       rows: displayRows,
       total: grandTotal,
     };

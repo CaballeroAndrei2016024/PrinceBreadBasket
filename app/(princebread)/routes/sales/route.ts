@@ -24,22 +24,59 @@ export async function GET() {
     const sales = await salesCollection
       .find({})
       .project({
-        _id: 0,
+        _id: 1,
+        transactionNumber: 1,
+        customerCode: 1,
+        customerName: 1,
+        date: 1,
+
+        reportId: 1,
+        reportTransaction: 1,
+
         productId: 1,
         productName: 1,
+        productPrice: 1,
+
+        periodStart: 1,
+        periodEnd: 1,
+
+        rows: 1,
+        total: 1,
+
+        createdAt: 1,
+        updatedAt: 1,
       })
       .toArray();
     // Serialize ObjectId to string so JSON can be sent to the client
-    const serialized = sales.map((p: SalesDocument) => ({
-      ...p,
-      _id: p._id?.toString?.() ?? p._id,
+    const serialized = sales.map((sale: SalesDocument) => ({
+      ...sale,
+
+      _id: sale._id?.toString?.() ?? String(sale._id ?? ""),
+
+      date:
+        sale.date instanceof Date
+          ? sale.date.toISOString().split("T")[0]
+          : sale.date,
+
+      periodStart:
+        sale.periodStart instanceof Date
+          ? sale.periodStart.toISOString().split("T")[0]
+          : sale.periodStart,
+
+      periodEnd:
+        sale.periodEnd instanceof Date
+          ? sale.periodEnd.toISOString().split("T")[0]
+          : sale.periodEnd,
+
       createdAt:
-        p.createdAt &&
-        typeof p.createdAt !== "string" &&
-        "toISOString" in p.createdAt &&
-        typeof p.createdAt.toISOString === "function"
-          ? p.createdAt.toISOString()
-          : p.createdAt,
+        sale.createdAt instanceof Date
+          ? sale.createdAt.toISOString()
+          : sale.createdAt,
+
+      updatedAt:
+        sale.updatedAt instanceof Date
+          ? sale.updatedAt.toISOString()
+          : sale.updatedAt,
     }));
 
     return NextResponse.json(

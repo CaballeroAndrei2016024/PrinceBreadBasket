@@ -14,6 +14,7 @@ export type SalesHeader = {
   reportId: string;
   createdAt?: string;
 };
+
 export type Report = {
   _id?: string;
   productId: string;

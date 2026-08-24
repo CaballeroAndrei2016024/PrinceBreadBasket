@@ -30,8 +30,20 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
       <div className="mb-6 flex flex-col gap-3">
-        <h1 className="text-3xl font-semibold">Admin user management</h1>
-        <p className="max-w-2xl text-sm leading-6 text-slate-600">
+        <h1
+          className="text-3xl font-semibold"
+          style={{
+            fontFamily: "var(--font-heading)",
+          }}
+        >
+          Admin user management
+        </h1>
+        <p
+          className="max-w-2xl text-sm leading-6 text-slate-600"
+          style={{
+            fontFamily: "var(--font-body)",
+          }}
+        >
           Only existing registered users may be promoted to admin. This page is
           visible only to current admins.
         </p>
@@ -63,7 +75,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
       <UserList users={users} currentUserEmail={currentAdmin.email} />
 
-      <div className="mt-6 text-sm text-slate-500">
+      <div
+        className="mt-6 text-sm text-slate-500"
+        style={{
+          fontFamily: "var(--font-body)",
+        }}
+      >
         <p>Want to see current admin tools? Go back to the admin dashboard.</p>
         <Link
           href="/admin"

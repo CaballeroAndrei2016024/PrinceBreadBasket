@@ -27,7 +27,12 @@ type ProductRecord = {
 
 //Find a product by its productId.
 async function getProductById(productId: string) {
+  //Client check.
   const client = await getProductClient();
+  if (!client) {
+    throw new Error("Database client is null. Connection failed.");
+  }
+
   const db = client.db(env.MONGODB_PRODUCTS_DB || "products");
   const product = (await db
     .collection("products")

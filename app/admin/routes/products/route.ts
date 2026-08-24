@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
 //Update a product in the database.
 export async function PUT(request: NextRequest) {
   try {
+    //Find the form data from the request.
     const formData = await request.formData();
 
     const rawProductId = formData.get("product-id")?.toString().trim() ?? "";
