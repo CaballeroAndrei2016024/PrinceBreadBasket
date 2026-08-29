@@ -40,6 +40,12 @@ async function getReports() {
   })) as Report[];
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Reports",
+  description:
+    "This is the page where you can see your company's sales reports.",
+};
+
 export default async function ReportsPage() {
   const session = await getSession();
 

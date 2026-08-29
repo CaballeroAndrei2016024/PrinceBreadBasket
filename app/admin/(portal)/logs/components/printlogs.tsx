@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useReactToPrint } from "react-to-print";
 
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
 import { AdminSalesLog } from "@/app/admin/types";
 import { InventoryRow, AdminProductOption } from "./inventory.types";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type Props = {
   log: AdminSalesLog;
@@ -21,8 +23,8 @@ type SummaryRow = {
   qty: number;
 };
 
-function formatCurrency(value: number) {
-  return `₱${value.toFixed(2)}`;
+function formatCurrency(value: number, currency: string) {
+  return `${currency} ${value.toFixed(2)}`;
 }
 
 function buildSummaryRows(
@@ -73,9 +75,11 @@ function buildSummaryRows(
 function InventoryTable({
   title,
   rows,
+  currency,
 }: {
   title: string;
   rows: InventoryRow[];
+  currency: string;
 }) {
   const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
 
@@ -126,10 +130,10 @@ function InventoryTable({
                   {row.qty}
                 </td>
                 <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.price)}
+                  {formatCurrency(row.price, currency)}
                 </td>
                 <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.qty * row.price)}
+                  {formatCurrency(row.qty * row.price, currency)}
                 </td>
               </tr>
             ))
@@ -138,13 +142,20 @@ function InventoryTable({
       </table>
 
       <p style={{ textAlign: "right", marginTop: "8px" }}>
-        <strong>Section Total:</strong> {formatCurrency(total)}
+        <strong>Section Total:</strong> {formatCurrency(total, currency)}
       </p>
     </div>
   );
 }
 
 export default function AdminPrintSalesLog({ log, products = [] }: Props) {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   const [hover, setHover] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -239,20 +250,29 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
           <InventoryTable
             title="Beginning Inventory"
             rows={log.beginningRows}
+            currency={currency}
           />
-          <InventoryTable title="Additions" rows={log.additionRows} />
-          <InventoryTable title="Ending Inventory" rows={log.endingRows} />
+          <InventoryTable
+            title="Additions"
+            rows={log.additionRows}
+            currency={currency}
+          />
+          <InventoryTable
+            title="Ending Inventory"
+            rows={log.endingRows}
+            currency={currency}
+          />
 
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Beginning Total: {formatCurrency(beginningTotal)}
+            Beginning Total: {formatCurrency(beginningTotal, currency)}
           </h2>
           <h2 style={{ textAlign: "right" }}>
-            Additions Total: {formatCurrency(additionTotal)}
+            Additions Total: {formatCurrency(additionTotal, currency)}
           </h2>
           <h2 style={{ textAlign: "right" }}>
-            Ending Total: {formatCurrency(endingTotal)}
+            Ending Total: {formatCurrency(endingTotal, currency)}
           </h2>
 
           <br />
@@ -296,17 +316,17 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
                     {row.qty}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price)}
+                    {formatCurrency(row.price, currency)}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price)}
+                    {formatCurrency(row.qty * row.price, currency)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(totalAvailableGrandTotal)}
+            Grand Total: {formatCurrency(totalAvailableGrandTotal, currency)}
           </h2>
 
           <br />
@@ -350,17 +370,17 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
                     {row.qty}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price)}
+                    {formatCurrency(row.price, currency)}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price)}
+                    {formatCurrency(row.qty * row.price, currency)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(salesGrandTotal)}
+            Grand Total: {formatCurrency(salesGrandTotal, currency)}
           </h2>
         </div>
       </div>

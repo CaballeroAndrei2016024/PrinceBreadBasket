@@ -4,12 +4,22 @@ import Link from "next/link";
 import { AdminReport } from "../../../types";
 import AdminPrintReport from "./printreport";
 import { useState } from "react";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ReportsListProps = {
   reports: AdminReport[];
 };
 
 const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+
+  const prefix = settings.receiptPrefix || "PB-";
   const [reports, setReports] = useState<AdminReport[]>(initialReports);
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
@@ -46,7 +56,10 @@ const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
                 }
                 className="grid grid-cols-[90px_240px_120px_120px] items-center border-b bg-prince-green/80 px-4 py-3"
               >
-                <span>{index + 1}</span>
+                <span>
+                  {prefix}
+                  {index + 1}
+                </span>
 
                 <span>
                   {new Date(report.periodStart).toLocaleDateString()} -{" "}

@@ -8,6 +8,7 @@ type SalesHeaderListProps = {
 };
 
 const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
+  //Find reports.
   const reportsById = new Map(
     reports
       .filter((report) => report._id)

@@ -4,6 +4,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 //Type and Interface required for Product Details.
 type ProductImage = {
@@ -23,8 +25,14 @@ interface ProductDetailProps {
 }
 
 function ProductDetail(props: ProductDetailProps) {
-  const router = useRouter();
-
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  //Form state management.
   const [isEditing, setIsEditing] = useState(false);
   const [productName, setProductName] = useState(props.productName);
   const [productPrice, setProductPrice] = useState(
@@ -35,7 +43,7 @@ function ProductDetail(props: ProductDetailProps) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -191,10 +199,9 @@ function ProductDetail(props: ProductDetailProps) {
           <h1 className="mt-2 text-3xl font-bold">{props.productName}</h1>
 
           <p className="mt-3 text-xl">
-            {new Intl.NumberFormat("en-PH", {
-              style: "currency",
-              currency: "PHP",
-            }).format(props.productPrice)}
+            {currency}
+            {""}
+            {props.productPrice}
           </p>
 
           {message && (
@@ -277,6 +284,10 @@ function ProductDetail(props: ProductDetailProps) {
               className="w-full rounded-md border p-2"
               required
             />
+
+            <span className="whitespace-nowrap font-semibold text-prince-shadow/50">
+              {currency}
+            </span>
           </div>
 
           <div>

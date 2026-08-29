@@ -74,6 +74,12 @@ async function getReports(): Promise<Report[]> {
   }));
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Headers",
+  description:
+    "This is the page where you can see your company's sales headers.",
+};
+
 export default async function SalesPage() {
   const session = await getSession();
 

@@ -1,6 +1,9 @@
+"use client";
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ProductImage = {
   fileName?: string;
@@ -23,6 +26,13 @@ type ProductsListProps = {
 };
 
 const AdminProductsList = ({ products }: ProductsListProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -80,11 +90,7 @@ const AdminProductsList = ({ products }: ProductsListProps) => {
                   {product.productName}
                 </h3>
                 <p className="mt-1 text-sm text-slate-700">
-                  Price:{" "}
-                  {new Intl.NumberFormat("en-PH", {
-                    style: "currency",
-                    currency: "PHP",
-                  }).format(product.productPrice)}
+                  Price: {product.productPrice.toFixed(2)} {currency}
                 </p>
               </Link>
             );

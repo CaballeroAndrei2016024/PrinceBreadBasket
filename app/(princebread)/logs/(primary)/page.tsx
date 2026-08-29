@@ -43,6 +43,11 @@ async function getLogs() {
   })) as SalesLog[];
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Logs",
+  description: "This is the page where you can see your company's sales logs.",
+};
+
 export default async function SalesLogPage() {
   const session = await getSession();
 

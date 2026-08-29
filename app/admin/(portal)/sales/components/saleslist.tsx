@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import type { AdminSalesHeader } from "../../../types";
 import AdminPrintSalesHeader from "./printsales";

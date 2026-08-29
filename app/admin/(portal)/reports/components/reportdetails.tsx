@@ -4,6 +4,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminReportTransactionRow } from "../../../types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 //Type and Interface required for Report Details.
 
@@ -22,8 +24,16 @@ interface ReportDetailProps {
 }
 
 function ReportDetail(props: ReportDetailProps) {
-  const router = useRouter();
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const prefix = settings.receiptPrefix || "PB-";
 
+  //Report Details.
   const [isEditing, setIsEditing] = useState(false);
   const [productId, setProductId] = useState(props.productId);
   const [productName, setProductName] = useState(props.productName);
@@ -33,10 +43,10 @@ function ReportDetail(props: ReportDetailProps) {
   const [periodStart, setPeriodStart] = useState(props.periodStart);
   const [periodEnd, setPeriodEnd] = useState(props.periodEnd);
   const [rows, setRows] = useState(props.rows);
-
+  //Form States.
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -196,14 +206,23 @@ function ReportDetail(props: ReportDetailProps) {
     <section className="mx-auto w-full max-w-3xl text-center border-4 border-prince-shadow/50">
       {!isEditing ? (
         <>
-          <p>Transaction Number: {props.transactionNumber}</p>
+          <p>
+            Transaction Number:{prefix}
+            {""} {props.transactionNumber}
+          </p>
           <p>Product ID: {props.productId}</p>
           <p>Product Name: {props.productName}</p>
-          <p>Product Price: {props.productPrice}</p>
+          <p>
+            Product Price:{currency}
+            {""} {props.productPrice}
+          </p>
           <p>
             Period: {periodStart} - {periodEnd}
           </p>
-          <p>Total: {total}</p>
+          <p>
+            Total:{currency}
+            {""} {total}
+          </p>
 
           {message && (
             <p className="mt-4 font-semibold text-green-700">{message}</p>
@@ -248,7 +267,6 @@ function ReportDetail(props: ReportDetailProps) {
             >
               Transaction Number
             </label>
-
             <input
               id="transaction-number"
               type="text"
@@ -410,6 +428,9 @@ function ReportDetail(props: ReportDetailProps) {
                       >
                         Unit Price
                       </label>
+                      <span className="text-xs font-semibold text-slate-600">
+                        {currency}
+                      </span>
 
                       <input
                         id={`row-price-${row.id}`}
@@ -440,14 +461,16 @@ function ReportDetail(props: ReportDetailProps) {
                   </div>
 
                   <p className="mt-3 text-right font-semibold">
-                    Row Total: ₱{(row.qty * row.price).toFixed(2)}
+                    Row Total: {currency}
+                    {(row.qty * row.price).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-4 text-right text-lg font-bold">
-              Grand Total: ₱{total.toFixed(2)}
+              Grand Total: {currency}
+              {total.toFixed(2)}
             </p>
           </div>
 

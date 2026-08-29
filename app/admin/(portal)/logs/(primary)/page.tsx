@@ -44,6 +44,12 @@ async function getLogs() {
   })) as AdminSalesLog[];
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Logs",
+  description:
+    "This is the page where you can see your company's sales logs. You can also choose to edit or delete them.",
+};
+
 export default async function SalesLogPage() {
   const session = await getSession();
 

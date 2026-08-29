@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 //Login page title.
 export const metadata = {
-  title: "Register to the Prince Bread Program!",
+  title: "Register to This Program!",
   description:
     "Before you go in, you must first enter your email, username, birthdate and password here.",
 };

@@ -7,6 +7,8 @@ import { useReactToPrint } from "react-to-print";
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
 import type { Report } from "../../types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type Props = {
   report: Report;
@@ -15,6 +17,14 @@ type Props = {
 export default function PrintReport({ report }: Props) {
   const [hover, setHover] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const prefix = settings.receiptPrefix || "PB-";
 
   const handlePrint = useReactToPrint({
     contentRef,
@@ -59,7 +69,8 @@ export default function PrintReport({ report }: Props) {
           <hr />
 
           <p>
-            <strong>Transaction Number:</strong> {report.transactionNumber}
+            <strong>Transaction Number:</strong> {prefix}
+            {report.transactionNumber}
           </p>
 
           <p>
@@ -112,11 +123,11 @@ export default function PrintReport({ report }: Props) {
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    ₱{row.price.toFixed(2)}
+                    {currency} {row.price.toFixed(2)}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    ₱{(row.qty * row.price).toFixed(2)}
+                    {currency} {(row.qty * row.price).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -126,7 +137,7 @@ export default function PrintReport({ report }: Props) {
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: ₱{report.total.toFixed(2)}
+            Grand Total: {currency} {report.total.toFixed(2)}
           </h2>
         </div>
       </div>

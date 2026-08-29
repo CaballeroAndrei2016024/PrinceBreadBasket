@@ -17,9 +17,8 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Prince Bread Basket",
-  description:
-    "Sales, reports, and inventory management for Prince Bread Basket",
+  title: "Your Company",
+  description: "Sales, reports, and inventory management for Your Company.",
 };
 
 export default function RootLayout({

@@ -15,6 +15,7 @@ const createEmptyRow = (): InventoryRow => ({
 });
 
 const SalesLogForm = () => {
+  //Form declarations for different segments.
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [transactionNumber, setTransactionNumber] = useState("");
@@ -32,6 +33,8 @@ const SalesLogForm = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
+
+  //Code for different rows.
 
   function syncEndingRows(
     beginning: InventoryRow[],
@@ -388,7 +391,7 @@ const SalesLogForm = () => {
 
           <div className="mt-4 w-full">
             <LogsInventorySection
-              title="Ending Inventory"
+              title="Sales"
               rows={endingRows}
               setRows={setEndingRows}
               products={products}

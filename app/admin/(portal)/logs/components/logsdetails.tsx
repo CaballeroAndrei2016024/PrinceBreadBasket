@@ -5,12 +5,22 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminProductOption } from "./inventory.types";
 import { AdminLogInventoryRow, AdminSalesLog } from "@/app/admin/types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 interface LogDetailProps {
   log: AdminSalesLog;
 }
 
 function LogDetail({ log }: LogDetailProps) {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const prefix = settings.receiptPrefix || "PB-";
   const router = useRouter();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -389,9 +399,7 @@ function LogDetail({ log }: LogDetailProps) {
     }
   }
 
-  // -----------------
   // Delete Sales Log
-  // -----------------
 
   async function handleDelete() {
     const confirmed = window.confirm(
@@ -437,9 +445,7 @@ function LogDetail({ log }: LogDetailProps) {
     }
   }
 
-  // -----------------
   // The option to quit editing.
-  // -----------------
 
   function handleCancelEdit() {
     setIsEditing(false);
@@ -454,10 +460,7 @@ function LogDetail({ log }: LogDetailProps) {
     setMessage(null);
   }
 
-  // -----------------
-  // Render
-  // -----------------
-
+  // The Actual Content.
   return (
     <section className="mx-auto w-full max-w-4xl text-center border-4 border-prince-shadow/50">
       {!isEditing ? (
@@ -479,7 +482,9 @@ function LogDetail({ log }: LogDetailProps) {
               }}
             >
               <p>
-                <strong>Transaction Number:</strong> {log.transactionNumber}
+                <strong>Transaction Number:</strong>
+                {prefix}
+                {""} {log.transactionNumber}
               </p>
 
               <p>
@@ -489,26 +494,33 @@ function LogDetail({ log }: LogDetailProps) {
               </p>
 
               <p>
-                <strong>Beginning Inventory Total:</strong> ₱
+                <strong>Beginning Inventory Total:</strong> {currency}
+                {""}
                 {beginningTotal.toFixed(2)}
               </p>
 
               <p>
-                <strong>Additions Total:</strong> ₱{additionTotal.toFixed(2)}
+                <strong>Additions Total:</strong> {currency}
+                {""}
+                {additionTotal.toFixed(2)}
               </p>
 
               <p>
-                <strong>Ending Inventory Total:</strong> ₱
+                <strong>Ending Inventory Total:</strong> {currency}
+                {""}
                 {endingTotal.toFixed(2)}
               </p>
 
               <p>
-                <strong>Total Available for Sales:</strong> ₱
+                <strong>Total Available for Sales:</strong> {currency}
+                {""}
                 {totalAvailable.toFixed(2)}
               </p>
 
               <p>
-                <strong>Sales Total:</strong> ₱{salesTotal.toFixed(2)}
+                <strong>Sales Total:</strong> {currency}
+                {""}
+                {salesTotal.toFixed(2)}
               </p>
 
               {log.createdAt && (
@@ -566,7 +578,6 @@ function LogDetail({ log }: LogDetailProps) {
             >
               Transaction Number
             </label>
-
             <input
               id="transaction-number"
               type="text"
@@ -703,6 +714,10 @@ function LogDetail({ log }: LogDetailProps) {
                         Unit Price
                       </label>
 
+                      <span className="text-xs font-semibold text-slate-600">
+                        {currency}
+                      </span>
+
                       <input
                         id={`beginning-price-${row.id}`}
                         type="number"
@@ -732,14 +747,18 @@ function LogDetail({ log }: LogDetailProps) {
                   </div>
 
                   <p className="mt-3 text-right font-semibold">
-                    Row Total: ₱{(row.qty * row.price).toFixed(2)}
+                    Row Total: {currency}
+                    {""}
+                    {(row.qty * row.price).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-4 text-right text-lg font-bold">
-              Beginning Total: ₱{beginningTotal.toFixed(2)}
+              Beginning Total: {currency}
+              {""}
+              {beginningTotal.toFixed(2)}
             </p>
           </div>
 
@@ -834,6 +853,10 @@ function LogDetail({ log }: LogDetailProps) {
                         Unit Price
                       </label>
 
+                      <span className="text-xs font-semibold text-slate-600">
+                        {currency}
+                      </span>
+
                       <input
                         id={`addition-price-${row.id}`}
                         type="number"
@@ -863,14 +886,18 @@ function LogDetail({ log }: LogDetailProps) {
                   </div>
 
                   <p className="mt-3 text-right font-semibold">
-                    Row Total: ₱{(row.qty * row.price).toFixed(2)}
+                    Row Total: {currency}
+                    {""}
+                    {(row.qty * row.price).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-4 text-right text-lg font-bold">
-              Additions Total: ₱{additionTotal.toFixed(2)}
+              Additions Total: {currency}
+              {""}
+              {additionTotal.toFixed(2)}
             </p>
           </div>
 
@@ -941,6 +968,10 @@ function LogDetail({ log }: LogDetailProps) {
                         Unit Price
                       </label>
 
+                      <span className="text-xs font-semibold text-slate-600">
+                        {currency}
+                      </span>
+
                       <input
                         id={`ending-price-${row.id}`}
                         type="number"
@@ -952,14 +983,18 @@ function LogDetail({ log }: LogDetailProps) {
                   </div>
 
                   <p className="mt-3 text-right font-semibold">
-                    Row Total: ₱{(row.qty * row.price).toFixed(2)}
+                    Row Total: {currency}
+                    {""}
+                    {(row.qty * row.price).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
 
             <p className="mt-4 text-right text-lg font-bold">
-              Ending Total: ₱{endingTotal.toFixed(2)}
+              Ending Total: {currency}
+              {""}
+              {endingTotal.toFixed(2)}
             </p>
           </div>
 
@@ -971,11 +1006,15 @@ function LogDetail({ log }: LogDetailProps) {
 
             <div className="mt-3 space-y-2 text-right">
               <p className="font-semibold">
-                Total Available for Sales: ₱{totalAvailable.toFixed(2)}
+                Total Available for Sales: {currency}
+                {""}
+                {totalAvailable.toFixed(2)}
               </p>
 
               <p className="font-bold text-lg">
-                Sales Total: ₱{salesTotal.toFixed(2)}
+                Sales Total: {currency}
+                {""}
+                {salesTotal.toFixed(2)}
               </p>
             </div>
           </div>

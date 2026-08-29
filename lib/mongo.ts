@@ -6,6 +6,7 @@ loadEnvFile();
 
 //To provide lazy runtime access.
 let userClientPromise: Promise<MongoClient> | null = null;
+let settingsClientPromise: Promise<MongoClient> | null = null;
 
 function getEnv(name: string, required = true): string | undefined {
   const value = process.env[name];
@@ -39,4 +40,29 @@ export async function getAuthClient() {
   }
 
   return userClientPromise;
+}
+
+export async function getSettingsClient() {
+  if (!userClientPromise) {
+    const uri = getEnv("MONGODB_SETTINGS_URI");
+
+    console.log("MONGODB_SETTINGS_URI =", uri);
+
+    if (!uri) {
+      throw new Error("MONGODB_SETTINGS_URI is missing.");
+    }
+
+    const client = new MongoClient(uri);
+
+    try {
+      await client.connect();
+      console.log("Successfully connected to MongoDB.");
+      settingsClientPromise = Promise.resolve(client);
+    } catch (err) {
+      console.error("MongoDB connection failed:", err);
+      throw err;
+    }
+  }
+
+  return settingsClientPromise;
 }

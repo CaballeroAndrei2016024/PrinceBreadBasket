@@ -390,7 +390,7 @@ const AdminSalesLogForm = () => {
 
           <div className="mt-4 w-full">
             <AdminLogsInventorySection
-              title="Ending Inventory"
+              title="Sales"
               rows={endingRows}
               setRows={setEndingRows}
               products={products}

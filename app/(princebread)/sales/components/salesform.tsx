@@ -2,6 +2,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ReportOption = {
   _id: string;
@@ -23,8 +25,13 @@ type TransactionRow = {
 };
 
 const SalesHeaderForm = () => {
-  const router = useRouter();
-
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   // Form header fields
   const [date, setDate] = useState("");
   const [customerCode, setCustomerCode] = useState("");
@@ -55,6 +62,7 @@ const SalesHeaderForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   const displayRows = rows.map((row) => ({
     ...row,
@@ -375,11 +383,11 @@ const SalesHeaderForm = () => {
                     <th className="border border-prince-yellow p-2 text-center w-24">
                       Qty
                     </th>
-                    <th className="border border-prince-yellow p-2 text-center w-28">
-                      Unit Price
+                    <th className="border border-prince-yellow p-2 text-center w-32">
+                      Unit Price ({currency})
                     </th>
-                    <th className="border border-prince-yellow p-2 text-center w-28">
-                      Total
+                    <th className="border border-prince-yellow p-2 text-center w-32">
+                      Total ({currency})
                     </th>
                     <th className="border border-prince-yellow p-2 text-center w-20">
                       Action
@@ -411,17 +419,25 @@ const SalesHeaderForm = () => {
                         />
                       </td>
                       <td className="border border-prince-yellow p-2 text-center">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.price}
-                          readOnly
-                          min="0"
-                          className="w-full rounded-md border border-gray-300 p-1 text-slate-700 text-center"
-                        />
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.price}
+                            readOnly
+                            min="0"
+                            className="w-full rounded-md border border-gray-300 p-1 text-slate-700 text-center"
+                          />
+
+                          <span className="text-xs font-semibold text-slate-600">
+                            {currency}
+                          </span>
+                        </div>
                       </td>
                       <td className="border border-prince-yellow p-2 text-center font-semibold">
-                        {(row.qty * row.price).toFixed(2)}
+                        {row.qty * row.price > 0
+                          ? `${(row.qty * row.price).toFixed(2)} ${currency}`
+                          : `0.00 ${currency}`}
                       </td>
                       <td className="border border-prince-yellow p-2 text-center">
                         <button
@@ -450,7 +466,7 @@ const SalesHeaderForm = () => {
                   fontFamily: "var(--font-body)",
                 }}
               >
-                Grand Total: {grandTotal.toFixed(2)}
+                Grand Total: {currency} {""} {grandTotal.toFixed(2)}
               </span>
             </div>
           </div>
@@ -583,5 +599,3 @@ const SalesHeaderForm = () => {
 };
 
 export default SalesHeaderForm;
-
-//Yes, I intentioanlly want to store the buisness PID for the Product, not MongoDB's ID.

@@ -3,6 +3,8 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminReport, AdminSalesHeader } from "../../../types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 interface SalesHeaderDetailProps {
   sales: AdminSalesHeader;
@@ -11,6 +13,14 @@ interface SalesHeaderDetailProps {
 }
 
 function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const prefix = settings.receiptPrefix || "PB-";
   const router = useRouter();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -193,7 +203,10 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
     <section className="mx-auto w-full max-w-3xl text-center">
       {!isEditing ? (
         <>
-          <p>Transaction Number: {sales.transactionNumber}</p>
+          <p>
+            Transaction Number:{prefix}
+            {""} {sales.transactionNumber}
+          </p>
           <p>Customer Code: {sales.customerCode}</p>
           <p>Customer Name: {sales.customerName}</p>
           <p>Date: {new Date(sales.date).toLocaleDateString()}</p>
@@ -206,7 +219,11 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
             Period: {new Date(report.periodStart).toLocaleDateString()} -{" "}
             {new Date(report.periodEnd).toLocaleDateString()}
           </p>
-          <p>Total: ₱{sales.total.toFixed(2)}</p>
+          <p>
+            Total: {currency}
+            {""}
+            {sales.total.toFixed(2)}
+          </p>
 
           {message && (
             <p className="mt-4 font-semibold text-green-700">{message}</p>
@@ -251,7 +268,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
             >
               Transaction Number
             </label>
-
             <input
               id="transaction-number"
               type="text"

@@ -3,8 +3,18 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 const ProductRegistrationFormPage = () => {
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  //Use States and Submission checks.
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -179,15 +189,20 @@ const ProductRegistrationFormPage = () => {
               placeholder="Name: Classic Loaf"
               className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             />
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              id="product-price"
-              name="product-price"
-              placeholder="Price: 99.99"
-              className="mt-3 rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                id="product-price"
+                name="product-price"
+                placeholder="Price: 99.99"
+                className="w-full rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+              />
+              <span className="whitespace-nowrap font-semibold text-prince-shadow/50">
+                {currency}
+              </span>
+            </div>
             {message && (
               <p
                 className="mt-3 text-sm font-semibold text-green-700"

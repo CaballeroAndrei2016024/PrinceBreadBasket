@@ -1,12 +1,24 @@
+"use client";
+
 import Link from "next/link";
 import PrintReport from "../components/printreport";
 import type { Report } from "../../types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ReportsListProps = {
   reports: Report[];
 };
 
 const ReportsList = ({ reports }: ReportsListProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+
+  const prefix = settings.receiptPrefix || "PB-";
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -41,7 +53,10 @@ const ReportsList = ({ reports }: ReportsListProps) => {
                 }
                 className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
               >
-                <span>{index + 1}</span>
+                <span>
+                  {prefix}
+                  {index + 1}
+                </span>
 
                 <span>
                   {new Date(report.periodStart).toLocaleDateString()} -{" "}

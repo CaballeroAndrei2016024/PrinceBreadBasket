@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ProductOption = {
   _id: string;
@@ -18,7 +20,13 @@ type TransactionRow = {
 };
 
 const SalesReportForm = () => {
-  const router = useRouter();
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
 
   // Form header fields
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -38,6 +46,7 @@ const SalesReportForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.productId === selectedProductId),
@@ -348,11 +357,11 @@ const SalesReportForm = () => {
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
-                      Product Price
+                      Product Price ({currency})
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
-                      Total
+                      Total ({currency})
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-24">
@@ -390,22 +399,30 @@ const SalesReportForm = () => {
                       </td>
 
                       <td className="border border-prince-yellow p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={row.price}
-                          onChange={(e) =>
-                            updateRow(row.id, {
-                              price: Number(e.target.value),
-                            })
-                          }
-                          className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
-                        />
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={row.price}
+                            onChange={(e) =>
+                              updateRow(row.id, {
+                                price: Number(e.target.value),
+                              })
+                            }
+                            className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
+                          />
+
+                          <span className="text-xs font-semibold text-slate-600">
+                            {currency}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="border border-prince-yellow p-2 text-center font-semibold">
-                        {(row.qty * row.price).toFixed(2)}
+                        {row.qty * row.price > 0
+                          ? `${(row.qty * row.price).toFixed(2)} ${currency}`
+                          : `0.00 ${currency}`}
                       </td>
 
                       <td className="border border-prince-yellow p-2 text-center">
@@ -430,7 +447,9 @@ const SalesReportForm = () => {
               }}
             >
               <span>Total:</span>
-              <span className="font-semibold">₱{grandTotal.toFixed(2)}</span>
+              <span className="font-semibold">
+                {currency} {grandTotal.toFixed(2)}
+              </span>
             </div>
           </div>
 
@@ -476,5 +495,3 @@ const SalesReportForm = () => {
 };
 
 export default SalesReportForm;
-
-//Yes, I intentioanlly want to store the buisness PID for the Product, not MongoDB's ID.

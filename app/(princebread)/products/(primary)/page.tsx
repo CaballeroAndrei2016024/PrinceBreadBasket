@@ -26,6 +26,11 @@ async function getProducts() {
   })) as Product[];
 }
 
+export const metadata = {
+  title: "Here is the page for your Products",
+  description: "This is the page where you can see your company's products.",
+};
+
 export default async function ProductPage() {
   const session = await getSession();
 

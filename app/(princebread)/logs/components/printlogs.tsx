@@ -8,6 +8,8 @@ import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
 import type { ProductOption } from "./inventory.types";
 import type { InventoryRow, SalesLog } from "./logslist";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type Props = {
   log: SalesLog;
@@ -21,8 +23,8 @@ type SummaryRow = {
   qty: number;
 };
 
-function formatCurrency(value: number) {
-  return `₱${value.toFixed(2)}`;
+function formatCurrency(value: number, currency: string) {
+  return `${currency} ${value.toFixed(2)}`;
 }
 
 function buildSummaryRows(
@@ -77,6 +79,13 @@ function InventoryTable({
   title: string;
   rows: InventoryRow[];
 }) {
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
 
   return (
@@ -126,10 +135,10 @@ function InventoryTable({
                   {row.qty}
                 </td>
                 <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.price)}
+                  {currency} {row.price.toFixed(2)}
                 </td>
                 <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.qty * row.price)}
+                  {currency} {(row.qty * row.price).toFixed(2)}
                 </td>
               </tr>
             ))
@@ -138,13 +147,23 @@ function InventoryTable({
       </table>
 
       <p style={{ textAlign: "right", marginTop: "8px" }}>
-        <strong>Section Total:</strong> {formatCurrency(total)}
+        <strong>Section Total:</strong>
+        {formatCurrency(total, currency)}
       </p>
     </div>
   );
 }
 
 export default function PrintSalesLog({ log, products = [] }: Props) {
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const prefix = settings.receiptPrefix || "PB-";
+  //Functionalities for printing.
   const [hover, setHover] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -221,7 +240,8 @@ export default function PrintSalesLog({ log, products = [] }: Props) {
           <hr />
 
           <p>
-            <strong>Transaction Number:</strong> {log.transactionNumber}
+            <strong>Transaction Number:</strong>
+            {prefix} {log.transactionNumber}
           </p>
 
           <p>
@@ -247,13 +267,13 @@ export default function PrintSalesLog({ log, products = [] }: Props) {
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Beginning Total: {formatCurrency(beginningTotal)}
+            Beginning Total: {formatCurrency(beginningTotal, currency)}
           </h2>
           <h2 style={{ textAlign: "right" }}>
-            Additions Total: {formatCurrency(additionTotal)}
+            Additions Total: {formatCurrency(additionTotal, currency)}
           </h2>
           <h2 style={{ textAlign: "right" }}>
-            Ending Total: {formatCurrency(endingTotal)}
+            Ending Total: {formatCurrency(endingTotal, currency)}
           </h2>
 
           <br />
@@ -297,17 +317,17 @@ export default function PrintSalesLog({ log, products = [] }: Props) {
                     {row.qty}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price)}
+                    {currency} {row.price.toFixed(2)}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price)}
+                    {currency} {(row.qty * row.price).toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(totalAvailableGrandTotal)}
+            Grand Total: {currency} {totalAvailableGrandTotal.toFixed(2)}
           </h2>
 
           <br />
@@ -351,17 +371,17 @@ export default function PrintSalesLog({ log, products = [] }: Props) {
                     {row.qty}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price)}
+                    {currency} {row.price.toFixed(2)}
                   </td>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price)}
+                    {currency} {(row.qty * row.price).toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(salesGrandTotal)}
+            Grand Total: {currency} {salesGrandTotal.toFixed(2)}
           </h2>
         </div>
       </div>

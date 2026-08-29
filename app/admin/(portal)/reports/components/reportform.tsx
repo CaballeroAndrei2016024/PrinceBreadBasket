@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type ProductOption = {
   _id: string;
@@ -18,13 +20,20 @@ type TransactionRow = {
 };
 
 const AdminSalesReportForm = () => {
-  const router = useRouter();
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
 
   // Form header fields
   const [selectedProductId, setSelectedProductId] = useState("");
   const [transactionNumber, setTransactionNumber] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
+  const router = useRouter();
 
   // Product selection
   const [products, setProducts] = useState<ProductOption[]>([]);
@@ -348,11 +357,11 @@ const AdminSalesReportForm = () => {
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
-                      Product Price
+                      Product Price ({currency})
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
-                      Total
+                      Total ({currency})
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-24">
@@ -402,10 +411,16 @@ const AdminSalesReportForm = () => {
                           }
                           className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
                         />
+
+                        <span className="text-xs font-semibold text-slate-600">
+                          {currency}
+                        </span>
                       </td>
 
                       <td className="border border-prince-yellow p-2 text-center font-semibold">
-                        {(row.qty * row.price).toFixed(2)}
+                        {row.qty * row.price > 0
+                          ? `${(row.qty * row.price).toFixed(2)} ${currency}`
+                          : `0.00 ${currency}`}
                       </td>
 
                       <td className="border border-prince-yellow p-2 text-center">
@@ -430,7 +445,9 @@ const AdminSalesReportForm = () => {
               }}
             >
               <span>Total:</span>
-              <span className="font-semibold">₱{grandTotal.toFixed(2)}</span>
+              <span className="font-semibold">
+                {currency} {grandTotal.toFixed(2)}
+              </span>
             </div>
           </div>
 
@@ -476,5 +493,3 @@ const AdminSalesReportForm = () => {
 };
 
 export default AdminSalesReportForm;
-
-//Yes, I intentioanlly want to store the buisness PID for the Product, not MongoDB's ID.

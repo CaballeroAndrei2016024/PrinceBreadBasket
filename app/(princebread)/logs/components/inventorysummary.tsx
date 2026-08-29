@@ -2,6 +2,8 @@
 //Component Logic for Total Available for Sale and Sales.
 import React from "react";
 import type { InventoryRow, ProductOption } from "./inventory.types";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type InventorySummaryProps = {
   products: ProductOption[];
@@ -17,9 +19,14 @@ const InventorySummary = ({
   additionRows,
   endingRows,
 }: InventorySummaryProps) => {
-  //
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   // A + B
-  //
   const grouped = new Map<
     string,
     {
@@ -113,17 +120,28 @@ const InventorySummary = ({
                 className="w-full md:w-1/4 rounded border px-2 py-1 bg-gray-100"
               />
 
-              <input
-                readOnly
-                value={row.price.toFixed(2)}
-                className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-              />
+              <div className="flex items-center gap-1">
+                <input
+                  readOnly
+                  value={row.price.toFixed(2)}
+                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
+                />
 
-              <input
-                readOnly
-                value={(row.qty * row.price).toFixed(2)}
-                className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-              />
+                <span className="text-xs font-semibold text-slate-600">
+                  {currency}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <input
+                  readOnly
+                  value={(row.qty * row.price).toFixed(2)}
+                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
+                />
+                <span className="text-xs font-semibold text-slate-600">
+                  {currency}
+                </span>
+              </div>
             </div>
           ))}
           <div className="mt-4 flex justify-end items-center gap-3">
@@ -135,19 +153,22 @@ const InventorySummary = ({
                 value={totalAvailableGrandTotal.toFixed(2)}
                 className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
               />
+              <span className="text-xs font-semibold text-slate-600">
+                {currency}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sales */}
+      {/* Ending Inventory */}
 
       <div className="mt-4 rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
         <h1
           className="font-bold text-2xl text-prince-red"
           style={{ fontFamily: "var(--font-heading)" }}
         >
-          Sales
+          Ending Inventory
         </h1>
 
         <div className="mt-4 space-y-2">
@@ -176,18 +197,27 @@ const InventorySummary = ({
                   value={row.qty}
                   className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
                 />
+                <div className="flex items-center gap-1">
+                  <input
+                    readOnly
+                    value={sellingPrice.toFixed(2)}
+                    className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
+                  />
 
-                <input
-                  readOnly
-                  value={sellingPrice.toFixed(2)}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
-
-                <input
-                  readOnly
-                  value={(sellingPrice * row.qty).toFixed(2)}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
+                  <span className="text-xs font-semibold text-slate-600">
+                    {currency}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    readOnly
+                    value={(sellingPrice * row.qty).toFixed(2)}
+                    className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
+                  />
+                  <span className="text-xs font-semibold text-slate-600">
+                    {currency}
+                  </span>
+                </div>
               </div>
             );
           })}
@@ -200,6 +230,10 @@ const InventorySummary = ({
                 value={salesGrandTotal.toFixed(2)}
                 className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
               />
+
+              <span className="text-xs font-semibold text-slate-600">
+                {currency}
+              </span>
             </div>
           </div>
         </div>

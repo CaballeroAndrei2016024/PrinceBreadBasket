@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import PrintSalesLog from "./printlogs";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 export type InventoryRow = {
   id: string;
@@ -28,6 +32,13 @@ export type SalesLogListProps = {
 };
 
 const SalesLogsList = ({ logs }: SalesLogListProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const prefix = settings.receiptPrefix || "PB-";
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -59,7 +70,10 @@ const SalesLogsList = ({ logs }: SalesLogListProps) => {
                 key={log._id ?? log.transactionNumber}
                 className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
               >
-                <span>{log.transactionNumber}</span>
+                <span>
+                  {prefix}
+                  {log.transactionNumber}
+                </span>
 
                 <span>
                   {new Date(log.periodStart).toLocaleDateString()} -{" "}

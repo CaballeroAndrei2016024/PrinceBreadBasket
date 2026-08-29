@@ -63,6 +63,12 @@ async function getSales(): Promise<AdminSalesHeader[]> {
   }));
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Headers",
+  description:
+    "This is the page where you can see your company's sales headers. You can also choose to edit or delete them.",
+};
+
 export default async function AdminSalesPage() {
   const sales = await getSales();
 

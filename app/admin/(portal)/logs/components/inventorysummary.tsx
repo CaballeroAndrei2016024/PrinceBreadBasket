@@ -1,7 +1,9 @@
 "use client";
 //Component Logic for Total Available for Sale and Sales.
 import React from "react";
+import { useSyncExternalStore } from "react";
 import type { InventoryRow, AdminProductOption } from "./inventory.types";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type InventorySummaryProps = {
   products: AdminProductOption[];
@@ -17,6 +19,13 @@ const AdminInventorySummary = ({
   additionRows,
   endingRows,
 }: InventorySummaryProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   //
   // A + B
   //
@@ -135,19 +144,22 @@ const AdminInventorySummary = ({
                 value={totalAvailableGrandTotal.toFixed(2)}
                 className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
               />
+              <span className="text-xs font-semibold text-slate-600">
+                {currency}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sales */}
+      {/* Ending Inventory */}
 
       <div className="mt-4 rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
         <h1
           className="font-bold text-2xl text-prince-red"
           style={{ fontFamily: "var(--font-heading)" }}
         >
-          Sales
+          Ending Inventory
         </h1>
 
         <div className="mt-4 space-y-2">
@@ -200,6 +212,9 @@ const AdminInventorySummary = ({
                 value={salesGrandTotal.toFixed(2)}
                 className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
               />
+              <span className="text-xs font-semibold text-slate-600">
+                {currency}
+              </span>
             </div>
           </div>
         </div>

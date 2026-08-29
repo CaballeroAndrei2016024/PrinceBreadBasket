@@ -38,6 +38,12 @@ async function getReports() {
   })) as AdminReport[];
 }
 
+export const metadata = {
+  title: "Here is the page for your Sales Reports",
+  description:
+    "This is the page where you can see your company's sales reports. You can also choose to edit or delete them.",
+};
+
 export default async function AdminReportsPage() {
   const reports = await getReports();
 

@@ -60,6 +60,8 @@ export async function GET() {
     );
   }
 }
+
+//POST- add a product to the database.
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

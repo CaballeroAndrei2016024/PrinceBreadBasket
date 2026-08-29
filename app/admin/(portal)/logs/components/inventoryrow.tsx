@@ -1,7 +1,9 @@
 "use client";
 //The logic for dictating how each individual row in the inventory section should behave.
 import React from "react";
+import { useSyncExternalStore } from "react";
 import { InventoryRow, AdminProductOption } from "./inventory.types";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type InventoryRowItemProps = {
   row: InventoryRow;
@@ -24,6 +26,13 @@ const AdminInventoryRowItem = ({
   onPriceChange,
   onRemove,
 }: InventoryRowItemProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-prince-shadow/10 bg-white/90 p-3 md:flex-row md:items-center">
       {/* Product List, based on Products already in the database. */}
@@ -76,6 +85,7 @@ const AdminInventoryRowItem = ({
             allowProductEdit ? "bg-white" : "bg-prince-yellow/30"
           }`}
         />
+        <span className="text-xs font-semibold text-slate-600">{currency}</span>
       </div>
       <div className="w-full md:w-1/5">
         <input
@@ -83,6 +93,7 @@ const AdminInventoryRowItem = ({
           value={(row.qty * row.price).toFixed(2)}
           className="w-full rounded-md border border-prince-yellow bg-prince-yellow/30 px-2 py-1 text-sm"
         />
+        <span className="text-xs font-semibold text-slate-600">{currency}</span>
       </div>
 
       {/* Button to remove a row. */}

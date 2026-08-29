@@ -35,6 +35,11 @@ const AdminBarItems: NavItem[] = [
     icon: "/newlogs.png",
   },
   {
+    name: "Settings",
+    href: "/admin/settings",
+    icon: "/settings.png",
+  },
+  {
     name: "Logout",
     icon: "/logout.png",
     action: "logout",

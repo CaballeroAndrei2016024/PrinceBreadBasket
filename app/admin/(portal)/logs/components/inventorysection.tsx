@@ -1,7 +1,9 @@
 import React from "react";
+import { useSyncExternalStore } from "react";
 //Component Logic for Beginning Inventory, Additions, and Ending Inventory.
 import type { InventoryRow, AdminProductOption } from "./inventory.types";
 import InventoryRowItem from "./inventoryrow";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type LogsInventorySectionProps = {
   title: string;
@@ -18,6 +20,13 @@ const AdminLogsInventorySection = ({
   products,
   allowProductEdit = true,
 }: LogsInventorySectionProps) => {
+  //Settings
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   const grandTotal = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
   return (
     <div className="mt-4 w-full rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
@@ -74,6 +83,9 @@ const AdminLogsInventorySection = ({
               value={grandTotal.toFixed(2)}
               className="w-full rounded-md border border-prince-yellow bg-prince-green/20 px-2 py-2 text-right font-bold"
             />
+            <span className="text-xs font-semibold text-slate-600">
+              {currency}
+            </span>
           </div>
         </div>
       </div>
