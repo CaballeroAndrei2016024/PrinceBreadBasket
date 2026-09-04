@@ -23,7 +23,6 @@ export type AdminSalesHeader = {
   _id: string;
   transactionNumber: string;
   customerCode: string;
-  customerName: string;
   date: string;
   productId: string;
   productName: string;

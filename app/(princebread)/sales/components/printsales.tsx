@@ -55,6 +55,7 @@ export default function PrintSalesHeader({ sales, report }: Props) {
 
       <div
         style={{
+          display: "none",
           overflow: "hidden",
           height: 0,
           fontFamily: "var(--font-body)",
@@ -78,11 +79,7 @@ export default function PrintSalesHeader({ sales, report }: Props) {
           </p>
 
           <p>
-            <strong>Customer Code:</strong> {sales.customerCode}
-          </p>
-
-          <p>
-            <strong>Customer Name:</strong> {sales.customerName}
+            <strong>Customer:</strong> {sales.customerCode}
           </p>
 
           <p>

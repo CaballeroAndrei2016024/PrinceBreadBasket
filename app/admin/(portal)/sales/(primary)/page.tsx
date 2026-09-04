@@ -22,8 +22,6 @@ async function getSales(): Promise<AdminSalesHeader[]> {
 
     customerCode: sale.customerCode ?? "",
 
-    customerName: sale.customerName ?? "",
-
     date:
       sale.date instanceof Date
         ? sale.date.toISOString().split("T")[0]

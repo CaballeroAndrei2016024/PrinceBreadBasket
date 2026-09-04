@@ -2,12 +2,23 @@
 import Link from "next/link";
 import type { AdminSalesHeader } from "../../../types";
 import AdminPrintSalesHeader from "./printsales";
+import { useSyncExternalStore } from "react";
+import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type SalesHeaderListProps = {
   sales: AdminSalesHeader[];
 };
 
 const AdminSalesHeaderList = ({ sales }: SalesHeaderListProps) => {
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
+  const grandTotal = sales.reduce((sum, sale) => sum + sale.total, 0);
+
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -28,23 +39,21 @@ const AdminSalesHeaderList = ({ sales }: SalesHeaderListProps) => {
       ) : (
         <div className="flex justify-center">
           <div className="w-full overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-[90px_240px_120px_90px_120px] border-b bg-prince-shadow/50 px-4 py-3 font-semibold">
-              <span>CC:</span>
-              <span>Name:</span>
+            <div className="grid grid-cols-[150px_120px_90px_120px_120px] gap-x-4 border-b bg-prince-shadow/50 px-4 py-3 font-semibold">
+              <span>Customer:</span>
               <span>Date</span>
               <span>Print?</span>
               <span>Edit?</span>
+              <span>Individual Total</span>
             </div>
 
             {sales.map((sale) => {
               return (
                 <div
                   key={sale._id ?? sale.transactionNumber}
-                  className="grid grid-cols-[90px_240px_120px_90px_120px] items-center border-b px-4 py-3 bg-prince-green/80"
+                  className="grid grid-cols-[150px_120px_90px_120px_120px] items-center gap-x-4 border-b px-4 py-3 bg-prince-green/80"
                 >
                   <span>{sale.customerCode}</span>
-
-                  <span>{sale.customerName}</span>
 
                   <span>{new Date(sale.date).toLocaleDateString()}</span>
 
@@ -56,12 +65,21 @@ const AdminSalesHeaderList = ({ sales }: SalesHeaderListProps) => {
                   >
                     Edit?
                   </Link>
+
+                  <span>
+                    {currency} {""}
+                    {sale.total.toFixed(2)}
+                  </span>
                 </div>
               );
             })}
           </div>
         </div>
       )}
+      <p className="mt-4 text-right text-lg font-bold text-prince-shadow">
+        Grand Total: {currency} {""}
+        {grandTotal.toFixed(2)}
+      </p>
       <Link
         href="/admin/sales/formpage"
         className="
@@ -77,7 +95,6 @@ py-5
 text-center
 text-[20px]
 text-black
-cursor-crosshair
 hover:italic
 hover:text-prince-orange
 hover:font-mono

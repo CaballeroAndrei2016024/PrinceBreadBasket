@@ -11,7 +11,6 @@ export const TransactionRowSchema = z.object({
 //The main schema for the Sales Header.
 export const SalesSchema = z.object({
   customerCode: z.string().min(1, "Customer code is required"),
-  customerName: z.string().min(1, "Customer name is required"),
   transactionNumber: z.string().min(1, "Transaction number is required"),
 
   reportId: z.string().min(1, "Report ID is required"),

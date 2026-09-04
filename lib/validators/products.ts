@@ -17,6 +17,7 @@ const productImageSchema = z
     message: "Image must be less than 5MB",
   });
 
+//The main schema for the Products.
 export const ProductSchema = z.object({
   productId: z.string().min(1, { message: "Product ID is required." }),
   productName: z.string().min(1, { message: "Product name is required." }),

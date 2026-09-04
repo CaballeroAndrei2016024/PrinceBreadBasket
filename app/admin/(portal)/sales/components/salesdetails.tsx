@@ -27,7 +27,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
 
   //Admin's editable fields.
   const [customerCode, setCustomerCode] = useState(sales.customerCode);
-  const [customerName, setCustomerName] = useState(sales.customerName);
   const [date, setDate] = useState(sales.date);
   const [reportId, setReportId] = useState(sales.reportId);
 
@@ -60,12 +59,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
       return;
     }
 
-    if (!customerName.trim()) {
-      setErrorMessage("Customer name is required.");
-      setIsSaving(false);
-      return;
-    }
-
     if (!date.trim()) {
       setErrorMessage("Date is required.");
       setIsSaving(false);
@@ -80,7 +73,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
 
     const salesData = {
       customerCode: customerCode.trim(),
-      customerName: customerName.trim(),
 
       // Keep the original Sales Header transaction number.
       transactionNumber: sales.transactionNumber,
@@ -192,7 +184,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
     setIsEditing(false);
 
     setCustomerCode(sales.customerCode);
-    setCustomerName(sales.customerName);
     setDate(sales.date);
     setReportId(sales.reportId);
 
@@ -208,7 +199,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
             {""} {sales.transactionNumber}
           </p>
           <p>Customer Code: {sales.customerCode}</p>
-          <p>Customer Name: {sales.customerName}</p>
           <p>Date: {new Date(sales.date).toLocaleDateString()}</p>
 
           <hr className="my-6" />
@@ -287,21 +277,6 @@ function SalesHeaderDetail({ sales, report, reports }: SalesHeaderDetailProps) {
               type="text"
               value={customerCode}
               onChange={(event) => setCustomerCode(event.target.value)}
-              className="w-full rounded-md border p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="customer-name" className="mb-1 block font-semibold">
-              Customer Name
-            </label>
-
-            <input
-              id="customer-name"
-              type="text"
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
               className="w-full rounded-md border p-2"
               required
             />

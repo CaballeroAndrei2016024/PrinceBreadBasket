@@ -9,6 +9,7 @@ let productClientPromise: Promise<MongoClient> | null = null;
 let reportsClientPromise: Promise<MongoClient> | null = null;
 let salesClientPromise: Promise<MongoClient> | null = null;
 let logsClientPromise: Promise<MongoClient> | null = null;
+let customerClientPromise: Promise<MongoClient> | null = null;
 
 function getEnv(name: string, required = true): string | undefined {
   const value = process.env[name];
@@ -79,4 +80,16 @@ export async function getLogsClient() {
   }
 
   return logsClientPromise;
+}
+
+export async function getCustomerClient() {
+  if (!customerClientPromise) {
+    const uri = getEnv("MONGODB_CUSTOMERS_URI");
+    if (!uri) {
+      throw new Error("MONGODB_CUSTOMERS_URI is missing.");
+    }
+    customerClientPromise = connectClient(uri, "customers");
+  }
+
+  return customerClientPromise;
 }

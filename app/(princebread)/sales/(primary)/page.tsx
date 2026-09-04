@@ -24,13 +24,13 @@ async function getSales(): Promise<SalesHeader[]> {
 
     customerCode: sale.customerCode ?? "",
 
-    customerName: sale.customerName ?? "",
-
     transactionNumber: sale.transactionNumber ?? "",
 
     date: sale.date ?? "",
 
     reportId: sale.reportId ?? "",
+
+    total: typeof sale.total === "number" ? sale.total : 0,
 
     createdAt:
       sale.createdAt instanceof Date

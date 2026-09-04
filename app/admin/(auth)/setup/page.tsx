@@ -65,7 +65,7 @@ export default async function SetupPage() {
           />
           <button
             type="submit"
-            className="block w-full box-border rounded-md border-2 border-prince-shadow/50 bg-prince-green/50 px-[30px] py-5 text-center text-[20px] text-black cursor-crosshair hover:italic hover:text-prince-orange hover:font-mono"
+            className="block w-full box-border rounded-md border-2 border-prince-shadow/50 bg-prince-green/50 px-[30px] py-5 text-center text-[20px] text-black  hover:italic hover:text-prince-orange hover:font-mono"
             style={{
               fontFamily: "var(--font-body)",
             }}
@@ -74,7 +74,7 @@ export default async function SetupPage() {
           </button>
           <Link
             href="/admin/login"
-            className="block w-full box-border rounded-md border-2 border--prince-green/50 bg-prince-yellow/50 px-[30px] py-5 text-center text-[20px] text-black cursor-crosshair hover:italic hover:text-prince-green hover:font-mono"
+            className="block w-full box-border rounded-md border-2 border--prince-green/50 bg-prince-yellow/50 px-[30px] py-5 text-center text-[20px] text-black  hover:italic hover:text-prince-green hover:font-mono"
             style={{
               fontFamily: "var(--font-body)",
             }}

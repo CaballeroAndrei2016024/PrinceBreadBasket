@@ -74,11 +74,7 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
           </p>
 
           <p>
-            <strong>Customer Code:</strong> {sales.customerCode}
-          </p>
-
-          <p>
-            <strong>Customer Name:</strong> {sales.customerName}
+            <strong>Customer:</strong> {sales.customerCode}
           </p>
 
           <p>

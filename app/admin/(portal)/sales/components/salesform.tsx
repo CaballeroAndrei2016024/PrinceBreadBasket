@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
+type CustomerImage = {
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
+  data?: string;
+};
+
 type ReportOption = {
   _id: string;
   transactionNumber: string;
@@ -15,6 +22,17 @@ type ReportOption = {
   periodEnd: string;
   total: number;
   rows: TransactionRow[];
+};
+
+type CustomerOption = {
+  _id: string;
+  customerCode?: string;
+  customerName: string;
+  birthDate: string;
+  address: string;
+  phoneNumber?: string;
+  customerImage?: CustomerImage;
+  createdAt?: string;
 };
 
 type TransactionRow = {
@@ -36,13 +54,17 @@ const AdminSalesHeaderForm = () => {
   // Form header fields
   const [date, setDate] = useState("");
   const [customerCode, setCustomerCode] = useState("");
-  const [customerName, setCustomerName] = useState("");
   const [transactionNumber, setTransactionNumber] = useState("");
 
   // Transaction rows
   const [rows, setRows] = useState<TransactionRow[]>([
     { id: "row-1", date: "", qty: 0, price: 0 },
   ]);
+
+  // Customer row
+
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState("");
 
   // Report row
 
@@ -95,12 +117,6 @@ const AdminSalesHeaderForm = () => {
       return;
     }
 
-    if (!customerName.trim()) {
-      setErrorMessage("Customer name is required.");
-      setIsSubmitting(false);
-      return;
-    }
-
     if (!transactionNumber.trim()) {
       setErrorMessage("Transaction number is required.");
       setIsSubmitting(false);
@@ -142,7 +158,6 @@ const AdminSalesHeaderForm = () => {
     // Build payload matching SalesSchema
     const salesPayload = {
       customerCode: customerCode.trim(),
-      customerName: customerName.trim(),
       transactionNumber: transactionNumber.trim(),
       reportId: report._id,
       reportTransaction: report.transactionNumber,
@@ -183,7 +198,7 @@ const AdminSalesHeaderForm = () => {
       // Reset form
       setDate("");
       setCustomerCode("");
-      setCustomerName("");
+      setSelectedCustomer("");
       setTransactionNumber("");
       setRows([{ id: "row-1", date: "", qty: 0, price: 0 }]);
       setSelectedReport("");
@@ -202,11 +217,43 @@ const AdminSalesHeaderForm = () => {
     }
   };
 
+  // Dropdown list of customers for the sales header.
+  useEffect(() => {
+    async function loadCustomers() {
+      try {
+        const response = await fetch("/admin/routes/customers", {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Failed to load customer options");
+        }
+
+        const result = await response.json();
+        const options = (result?.customers ?? []).filter(
+          (customer: CustomerOption) => customer.customerCode,
+        );
+
+        setCustomers(options);
+        if (options.length > 0) {
+          const firstCustomer = options[0].customerCode ?? "";
+          setSelectedCustomer(firstCustomer);
+          setCustomerCode(firstCustomer);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadCustomers();
+  }, []);
+
   //Dropdown list of reports for the sales header.
   useEffect(() => {
     async function loadReports() {
       try {
-        const response = await fetch("/routes/reports", { cache: "no-store" });
+        const response = await fetch("/admin/routes/reports", {
+          cache: "no-store",
+        });
         if (!response.ok) {
           throw new Error("Failed to load reports options");
         }
@@ -319,28 +366,29 @@ const AdminSalesHeaderForm = () => {
               htmlFor="customercode"
               className="mb-2 mt-3 font-semibold text-prince-shadow/50"
             >
-              Customer Code:
+              Customer:
             </label>
-            <input
-              type="text"
+            <select
               id="customercode"
-              value={customerCode}
-              onChange={(e) => setCustomerCode(e.target.value)}
-              className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
-            <label
-              htmlFor="customername"
-              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+              name="customer-code"
+              value={selectedCustomer}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedCustomer(value);
+                setCustomerCode(value);
+              }}
+              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             >
-              Customer Name:
-            </label>
-            <input
-              type="text"
-              id="customername"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
+              <option value="">Select a customer</option>
+              {customers.map((customer) => (
+                <option
+                  key={customer.customerCode ?? customer._id}
+                  value={customer.customerCode ?? customer._id}
+                >
+                  {customer.customerCode} - {customer.customerName}
+                </option>
+              ))}
+            </select>
             <label
               htmlFor="transactionnumber"
               className="mb-2 mt-3 font-semibold text-prince-shadow/50"

@@ -33,7 +33,6 @@ type SalesHeaderRecord = {
   _id: ObjectId;
   transactionNumber: string;
   customerCode: string;
-  customerName: string;
   date: string | Date;
 
   reportId: string;
@@ -138,7 +137,6 @@ async function getSalesHeaderByTransactionNumber(transactionNumber: string) {
 
     transactionNumber: sales.transactionNumber ?? "",
     customerCode: sales.customerCode ?? "",
-    customerName: sales.customerName ?? "",
 
     date:
       sales.date instanceof Date

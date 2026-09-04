@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
-const ProductRegistrationFormPage = () => {
+const ProductRegistrationForm = () => {
   //Settings.
   const settings = useSyncExternalStore(
     subscribeSettings,
@@ -22,6 +22,7 @@ const ProductRegistrationFormPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
+  //Function to handle image submission.
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -240,4 +241,4 @@ const ProductRegistrationFormPage = () => {
   );
 };
 
-export default ProductRegistrationFormPage;
+export default ProductRegistrationForm;

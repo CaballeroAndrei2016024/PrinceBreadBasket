@@ -1,5 +1,5 @@
 import React from "react";
-import ProductRegistrationFormPage from "../components/productform";
+import ProductRegistrationForm from "../components/productform";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/libauth";
 
@@ -18,7 +18,7 @@ export default async function ProductFormPage() {
   }
   return (
     <div>
-      <ProductRegistrationFormPage />
+      <ProductRegistrationForm />
     </div>
   );
 }

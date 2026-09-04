@@ -1,7 +1,7 @@
 import Link from "next/link";
 import React from "react";
 
-const page = () => {
+const AdminPortal = () => {
   return (
     <div className="flex flex-col gap-4">
       <h1
@@ -56,6 +56,12 @@ const page = () => {
           Manage Products
         </Link>
         <Link
+          href="/admin/customers"
+          className="mt-4 inline-flex items-center rounded-md bg-prince-green px-4 py-2 text-sm font-semibold text-white hover:bg-prince-yellow"
+        >
+          Manage Customers
+        </Link>
+        <Link
           href="/admin/reports"
           className="mt-4 inline-flex items-center rounded-md bg-prince-green px-4 py-2 text-sm font-semibold text-white hover:bg-prince-yellow"
         >
@@ -78,4 +84,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default AdminPortal;

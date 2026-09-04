@@ -9,9 +9,9 @@ export type SalesHeader = {
   _id?: string;
   transactionNumber: string;
   customerCode: string;
-  customerName: string;
   date: string;
   reportId: string;
+  total: number;
   createdAt?: string;
 };
 

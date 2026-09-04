@@ -75,7 +75,6 @@ py-5
 text-center
 text-[20px]
 text-black
-cursor-crosshair
 hover:italic
 hover:text-prince-orange
 hover:font-mono
@@ -101,7 +100,6 @@ py-5
 text-center
 text-[20px]
 text-black
-cursor-crosshair
 hover:italic
 hover:text-prince-orange
 hover:font-mono
@@ -127,7 +125,6 @@ py-5
 text-center
 text-[20px]
 text-black
-cursor-crosshair
 hover:italic
 hover:text-prince-green
 hover:font-mono

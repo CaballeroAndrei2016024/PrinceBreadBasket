@@ -27,7 +27,6 @@ export async function GET() {
         _id: 1,
         transactionNumber: 1,
         customerCode: 1,
-        customerName: 1,
         date: 1,
 
         reportId: 1,
@@ -172,7 +171,6 @@ export async function POST(request: NextRequest) {
       reportTransaction: report.transactionNumber,
 
       customerCode: sales.customerCode,
-      customerName: sales.customerName,
       date: sales.date,
 
       rows: report.rows,
@@ -379,7 +377,6 @@ export async function PUT(request: NextRequest) {
       transactionNumber: sales.transactionNumber,
 
       customerCode: sales.customerCode,
-      customerName: sales.customerName,
       date: sales.date,
 
       // Report= segment
