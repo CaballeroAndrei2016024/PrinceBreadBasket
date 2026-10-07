@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getCustomerClient } from "@/lib/mongodb";
 import { CustomerSchema } from "@/lib/validators/customer";
+import { generateCustomerCode } from "@/lib/business-logic-necessities/customer-code";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,7 @@ interface CustomerDocument {
   [key: string]: unknown;
 }
 
+// GET - fetch a customer from the database.
 export async function GET() {
   try {
     const client = await getCustomerClient();
@@ -63,21 +65,11 @@ export async function GET() {
   }
 }
 
-//POST- add a customer to the database.
+// POST - add a customer to the database.
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const rawCustomerId =
-      formData.get("customer-code")?.toString().trim() ?? "";
-    // Debug: log rawCustomerId received
-    try {
-      console.log("Received rawCustomerId:", rawCustomerId);
-    } catch (e) {
-      console.error(
-        "The customerId is not available right now. Please try again later",
-        e,
-      );
-    }
+
     const rawCustomerName =
       formData.get("customer-name")?.toString().trim() ?? "";
     const rawCustomerImage = formData.get("customer-image");
@@ -85,13 +77,25 @@ export async function POST(request: NextRequest) {
     const customerImage =
       rawCustomerImage instanceof File ? rawCustomerImage : null;
 
+    const client = await getCustomerClient();
+
+    if (!client) {
+      throw new Error("Database client is null. Connection failed.");
+    }
+
+    const db = client.db(env.MONGODB_CUSTOMERS_DB || "customers");
+    const customersCollection = db.collection("customers");
+
+    // Generate customer code automatically.
+    const customerCode = await generateCustomerCode(db);
+
     const validationResult = CustomerSchema.safeParse({
-      customerCode: rawCustomerId,
+      customerCode,
       customerName: rawCustomerName,
       birthDate: formData.get("birthdate")?.toString().trim() ?? "",
       address: formData.get("address")?.toString().trim() ?? "",
       phoneNumber: formData.get("phone")?.toString().trim() ?? "",
-      customerImage: customerImage,
+      customerImage,
     });
 
     if (!validationResult.success) {
@@ -104,31 +108,21 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
     const {
-      customerCode,
+      customerCode: validatedCustomerCode,
       customerName,
       birthDate,
       address,
       phoneNumber,
       customerImage: uploadedFile,
     } = validationResult.data;
+
     const imageBuffer = Buffer.from(await uploadedFile.arrayBuffer());
     const imageBase64 = imageBuffer.toString("base64");
 
-    const client = await getCustomerClient();
-    // Check what URI/DB is running.
-    try {
-      console.log("MONGODB_CUSTOMERS_URI=", env.MONGODB_CUSTOMERS_URI);
-      console.log("MONGODB_CUSTOMERS_DB=", env.MONGODB_CUSTOMERS_DB);
-    } catch (e) {
-      console.error("Failed to log env vars for MongoDB", e);
-    }
-
-    const db = client.db(env.MONGODB_CUSTOMERS_DB || "customers");
-    const customersCollection = db.collection("customers");
-
     const insertedCustomer = await customersCollection.insertOne({
-      customerCode,
+      customerCode: validatedCustomerCode,
       customerName,
       birthDate,
       address,
@@ -142,28 +136,18 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    // Debug: Check where data is written.
-    try {
-      console.log(
-        "Inserted into DB:",
-        db.databaseName,
-        "collection: customers, id:",
-        insertedCustomer.insertedId.toString(),
-      );
-    } catch (e) {
-      console.error("Failed to log insert info", e);
-    }
-
     return NextResponse.json(
       {
         success: true,
         message: "Customer created successfully",
+        customerCode: validatedCustomerCode,
         insertedId: insertedCustomer.insertedId.toString(),
       },
       { status: 201 },
     );
   } catch (error) {
     console.error("Customer submission failed:", error);
+
     return NextResponse.json(
       {
         success: false,

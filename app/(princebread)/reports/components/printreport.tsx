@@ -28,7 +28,7 @@ export default function PrintReport({ report }: Props) {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Report-${report.productId}-${report.periodStart}-${report.periodEnd}`,
+    documentTitle: `Report-${report.transactionNumber}-${report.periodStart}-${report.periodEnd}`,
   });
 
   return (
@@ -74,14 +74,6 @@ export default function PrintReport({ report }: Props) {
           </p>
 
           <p>
-            <strong>Product ID:</strong> {report.productId}
-          </p>
-
-          <p>
-            <strong>Product Name:</strong> {report.productName}
-          </p>
-
-          <p>
             <strong>Period:</strong>{" "}
             {new Date(report.periodStart).toLocaleDateString()} -{" "}
             {new Date(report.periodEnd).toLocaleDateString()}
@@ -97,7 +89,13 @@ export default function PrintReport({ report }: Props) {
           >
             <thead>
               <tr>
-                <th style={{ border: "1px solid black", padding: 8 }}>Date</th>
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product ID
+                </th>
+
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product Name
+                </th>
 
                 <th style={{ border: "1px solid black", padding: 8 }}>
                   Quantity
@@ -115,7 +113,11 @@ export default function PrintReport({ report }: Props) {
               {report.rows.map((row) => (
                 <tr key={row.id}>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {new Date(row.date).toLocaleDateString()}
+                    {row.productId}
+                  </td>
+
+                  <td style={{ border: "1px solid black", padding: 8 }}>
+                    {row.productName}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>

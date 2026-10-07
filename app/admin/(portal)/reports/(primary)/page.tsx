@@ -1,13 +1,17 @@
 import React from "react";
 import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
-import ReportsList from "../components/reportslist";
-import { AdminReport } from "../../../types";
+import type { AdminReport } from "../../../types";
+import AdminReportsList from "../components/reportslist";
 
 export const revalidate = 5; //5 second revalidation.
 
 async function getReports() {
+  //Client check.
   const client = await getReportsClient();
+  if (!client) {
+    throw new Error("Database client is null. Connection failed.");
+  }
   const db = client.db(env.MONGODB_REPORTS_DB || "reports");
   const reportsCollection = db.collection("reports");
 
@@ -16,11 +20,6 @@ async function getReports() {
     ...report,
 
     _id: report._id?.toString?.() ?? report._id,
-
-    productId: report.productId ?? "",
-    productName: report.productName ?? "",
-    productPrice:
-      typeof report.productPrice === "number" ? report.productPrice : 0,
 
     transactionNumber: report.transactionNumber ?? "",
 
@@ -66,7 +65,7 @@ export default async function AdminReportsPage() {
         >
           Displaying List of Reports:
         </p>
-        <ReportsList reports={reports} />
+        <AdminReportsList reports={reports} />
       </div>
     </div>
   );

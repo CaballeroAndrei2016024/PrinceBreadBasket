@@ -4,18 +4,27 @@ import { getReportsClient } from "@/lib/mongodb";
 
 export const runtime = "nodejs";
 
+//Find a report by transactionNumber.
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ transactionNumber: string }> },
+  {
+    params,
+  }: {
+    params: Promise<{
+      transactionNumber: string;
+    }>;
+  },
 ) {
   try {
     const { transactionNumber } = await params;
 
-    if (!transactionNumber) {
+    const normalizedTransactionNumber = transactionNumber.trim();
+
+    if (!normalizedTransactionNumber) {
       return NextResponse.json(
         {
           success: false,
-          message: "TransactionNumber is required",
+          message: "Transaction number is required.",
         },
         { status: 400 },
       );
@@ -28,17 +37,18 @@ export async function GET(
     }
 
     const db = client.db(env.MONGODB_REPORTS_DB || "reports");
+
     const reportsCollection = db.collection("reports");
 
     const report = await reportsCollection.findOne({
-      transactionNumber,
+      transactionNumber: normalizedTransactionNumber,
     });
 
     if (!report) {
       return NextResponse.json(
         {
           success: false,
-          message: "Report not found",
+          message: "Report not found.",
         },
         { status: 404 },
       );
@@ -46,11 +56,24 @@ export async function GET(
 
     const serializedReport = {
       ...report,
+
       _id: report._id.toString(),
+
+      periodStart:
+        report.periodStart instanceof Date
+          ? report.periodStart.toISOString().split("T")[0]
+          : report.periodStart,
+
+      periodEnd:
+        report.periodEnd instanceof Date
+          ? report.periodEnd.toISOString().split("T")[0]
+          : report.periodEnd,
+
       createdAt:
         report.createdAt instanceof Date
           ? report.createdAt.toISOString()
           : report.createdAt,
+
       updatedAt:
         report.updatedAt instanceof Date
           ? report.updatedAt.toISOString()

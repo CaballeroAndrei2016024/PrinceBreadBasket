@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
+import { getCurrentSalesHeaderByTransactionNumber } from "@/lib/business-logic-necessities/sales-headers";
 import { ReportSchema } from "@/lib/validators/reports";
 import { ObjectId } from "mongodb";
 
@@ -13,6 +14,7 @@ interface ReportsDocument {
   [key: string]: unknown;
 }
 
+//GET- Fetches a report from the database.
 export async function GET() {
   try {
     const client = await getReportsClient();
@@ -66,10 +68,43 @@ export async function GET() {
   }
 }
 
+//POST- Adds a report to the database.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validationResult = ReportSchema.safeParse(body);
+
+    const client = await getReportsClient();
+
+    if (!client) {
+      throw new Error("Database client is null. Connection failed.");
+    }
+
+    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
+    const reportsCollection = db.collection("reports");
+
+    const salesHeader = await getCurrentSalesHeaderByTransactionNumber(
+      String(body?.transactionNumber ?? "").trim(),
+    );
+
+    if (!salesHeader) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Sales Header not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const reportInput = {
+      transactionNumber: salesHeader.transactionNumber,
+      periodStart: String(body?.periodStart ?? "").trim(),
+      periodEnd: String(body?.periodEnd ?? "").trim(),
+      rows: salesHeader.rows,
+      total: salesHeader.total,
+    };
+
+    const validationResult = ReportSchema.safeParse(reportInput);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -81,9 +116,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
     const report = validationResult.data;
 
-    const client = await getReportsClient();
     // Check what URI/DB is running.
     try {
       console.log("MONGODB_REPORTS_URI=", env.MONGODB_REPORTS_URI);
@@ -91,14 +126,6 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.error("Failed to log env vars for MongoDB", e);
     }
-
-    // Client check.
-    if (!client) {
-      throw new Error("Database client is null. Connection failed.");
-    }
-
-    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-    const reportsCollection = db.collection("reports");
 
     const insertedReport = await reportsCollection.insertOne({
       ...report,
@@ -137,27 +164,42 @@ export async function POST(request: NextRequest) {
   }
 }
 
-//Update a report in the database.
+// Update a report in the database.
 export async function PUT(request: NextRequest) {
   try {
-    //Find the form data from the request.
+    // Read form data.
     const formData = await request.formData();
 
     const rawReportId = formData.get("report-id")?.toString().trim() ?? "";
+
     const rawReportData = formData.get("report-data")?.toString().trim() ?? "";
 
-    //Report Validation
+    // Validate required fields.
     if (!rawReportId || !rawReportData) {
       return NextResponse.json(
         {
           success: false,
-          message: "Your Report is incomplete. Please fill EVERYTHING up.",
+          message: "Report ID and report data are required.",
         },
         { status: 400 },
       );
     }
 
-    let reportData;
+    // Validate MongoDB Report ID.
+    if (!ObjectId.isValid(rawReportId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid report ID.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const reportId = new ObjectId(rawReportId);
+
+    // Parse report data.
+    let reportData: unknown;
 
     try {
       reportData = JSON.parse(rawReportData);
@@ -171,9 +213,95 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    //Validate report fields.
+    if (
+      !reportData ||
+      typeof reportData !== "object" ||
+      Array.isArray(reportData)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid report data.",
+        },
+        { status: 400 },
+      );
+    }
 
-    const validationResult = ReportSchema.safeParse(reportData);
+    const parsedReportData = reportData as {
+      transactionNumber?: unknown;
+      periodStart?: unknown;
+      periodEnd?: unknown;
+    };
+
+    const transactionNumber = String(
+      parsedReportData.transactionNumber ?? "",
+    ).trim();
+
+    const periodStart = String(parsedReportData.periodStart ?? "").trim();
+
+    const periodEnd = String(parsedReportData.periodEnd ?? "").trim();
+
+    if (!transactionNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Transaction number is required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Get Reports database client.
+    const reportsClient = await getReportsClient();
+
+    if (!reportsClient) {
+      throw new Error("Reports database client could not be initialized.");
+    }
+
+    const reportsDb = reportsClient.db(env.MONGODB_REPORTS_DB || "reports");
+
+    const reportsCollection = reportsDb.collection("reports");
+
+    // Make sure the report exists.
+    const existingReport = await reportsCollection.findOne({
+      _id: reportId,
+    });
+
+    if (!existingReport) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Report not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    // Get the source Sales Header.
+    const salesHeader =
+      await getCurrentSalesHeaderByTransactionNumber(transactionNumber);
+
+    if (!salesHeader) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Sales Header not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    // Build the report from the Sales Header.
+    const reportInput = {
+      transactionNumber: salesHeader.transactionNumber,
+      periodStart,
+      periodEnd,
+      rows: salesHeader.rows,
+      total: salesHeader.total,
+    };
+
+    // Validate the final report.
+    const validationResult = ReportSchema.safeParse(reportInput);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -188,28 +316,9 @@ export async function PUT(request: NextRequest) {
 
     const validatedReportData = validationResult.data;
 
-    //Is the client there?
-    const client = await getReportsClient();
-    if (!client) {
-      throw new Error("Database client is null. Connection failed.");
-    }
-    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-    const reportsCollection = db.collection("reports");
-
-    //Check for Report ID.
-    if (!ObjectId.isValid(rawReportId)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Invalid report ID.",
-        },
-        { status: 400 },
-      );
-    }
-
-    //Update the report.
+    // Update the report.
     const updatedReport = await reportsCollection.updateOne(
-      { _id: new ObjectId(rawReportId) },
+      { _id: reportId },
       {
         $set: {
           ...validatedReportData,
@@ -217,16 +326,6 @@ export async function PUT(request: NextRequest) {
         },
       },
     );
-
-    if (updatedReport.matchedCount === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Report not found",
-        },
-        { status: 404 },
-      );
-    }
 
     return NextResponse.json(
       {
@@ -242,22 +341,24 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Something went wrong while updating the report",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while updating the report",
       },
       { status: 500 },
     );
   }
 }
 
-//Delete a report in the database.
+// Delete a report in the database.
 export async function DELETE(request: NextRequest) {
   try {
-    //Find the form data from the request.
     const formData = await request.formData();
 
     const rawReportId = formData.get("report-id")?.toString().trim() ?? "";
 
-    //Report Validation
+    // Validate Report ID.
     if (!rawReportId) {
       return NextResponse.json(
         {
@@ -268,7 +369,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    //Check for Report ID.
     if (!ObjectId.isValid(rawReportId)) {
       return NextResponse.json(
         {
@@ -279,7 +379,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    //Is the client there?
     const client = await getReportsClient();
 
     if (!client) {
@@ -287,9 +386,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     const db = client.db(env.MONGODB_REPORTS_DB || "reports");
+
     const reportsCollection = db.collection("reports");
 
-    //Delete the report.
     const deletedReport = await reportsCollection.deleteOne({
       _id: new ObjectId(rawReportId),
     });
@@ -298,7 +397,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Report not found",
+          message: "Report not found.",
         },
         { status: 404 },
       );
@@ -318,7 +417,10 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Something went wrong while deleting the report",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while deleting the report",
       },
       { status: 500 },
     );

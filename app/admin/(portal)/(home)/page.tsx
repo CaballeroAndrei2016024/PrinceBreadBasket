@@ -79,6 +79,12 @@ const AdminPortal = () => {
         >
           Manage Sales Logs
         </Link>
+        <Link
+          href="/admin/transactions"
+          className="mt-4 inline-flex items-center rounded-md bg-prince-green px-4 py-2 text-sm font-semibold text-white hover:bg-prince-yellow"
+        >
+          Manage Sales Transactions
+        </Link>
       </div>
     </div>
   );

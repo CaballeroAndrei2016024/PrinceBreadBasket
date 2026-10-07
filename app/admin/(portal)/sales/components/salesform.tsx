@@ -5,41 +5,22 @@ import { Button } from "@/components/ui/button";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
-type CustomerImage = {
-  fileName?: string;
-  mimeType?: string;
-  size?: number;
-  data?: string;
-};
-
-type ReportOption = {
-  _id: string;
-  transactionNumber: string;
-  productId: string;
-  productName: string;
-  productPrice: number;
-  periodStart: string;
-  periodEnd: string;
-  total: number;
-  rows: TransactionRow[];
-};
-
-type CustomerOption = {
-  _id: string;
-  customerCode?: string;
-  customerName: string;
-  birthDate: string;
-  address: string;
-  phoneNumber?: string;
-  customerImage?: CustomerImage;
-  createdAt?: string;
-};
-
 type TransactionRow = {
   id: string;
-  date: string;
+  productId: string;
+  productName: string;
   qty: number;
   price: number;
+};
+
+type TransactionOption = {
+  _id: string;
+  transactionNumber: string;
+  customerCode: string;
+  transactionType: "BEGINNING_INVENTORY" | "ADDITION" | "SALES";
+  date: string;
+  rows: TransactionRow[];
+  total: number;
 };
 
 const AdminSalesHeaderForm = () => {
@@ -51,52 +32,28 @@ const AdminSalesHeaderForm = () => {
   );
   const currency = settings.currency || "PHP";
 
-  // Form header fields
-  const [date, setDate] = useState("");
-  const [customerCode, setCustomerCode] = useState("");
-  const [transactionNumber, setTransactionNumber] = useState("");
-
-  // Transaction rows
-  const [rows, setRows] = useState<TransactionRow[]>([
-    { id: "row-1", date: "", qty: 0, price: 0 },
-  ]);
-
-  // Customer row
-
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState("");
-
-  // Report row
-
-  const [reports, setReports] = useState<ReportOption[]>([]);
-  const [selectedReport, setSelectedReport] = useState("");
-
-  const selectedReportData = useMemo(
-    () => reports.find((report) => report.transactionNumber === selectedReport),
-    [reports, selectedReport],
-  );
-
-  //Dates.
-
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd] = useState("");
-
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
-  const displayRows = rows.map((row) => ({
-    ...row,
-    price:
-      row.price === 0 ? (selectedReportData?.productPrice ?? 0) : row.price,
-  }));
+  //Transactions.
 
-  const grandTotal = displayRows.reduce(
-    (sum, row) => sum + row.qty * row.price,
-    0,
+  const [transactions, setTransactions] = useState<TransactionOption[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState("");
+
+  const selectedTransactionData = useMemo(
+    () =>
+      transactions.find(
+        (transaction) => transaction.transactionNumber === selectedTransaction,
+      ),
+    [transactions, selectedTransaction],
   );
+
+  const displayRows = selectedTransactionData?.rows ?? [];
+
+  const grandTotal = selectedTransactionData?.total ?? 0;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,70 +62,42 @@ const AdminSalesHeaderForm = () => {
     setErrorMessage(null);
 
     // Validation
-    if (!date.trim()) {
-      setErrorMessage("Date is required.");
+
+    if (!selectedTransaction) {
+      setErrorMessage("Please select a transaction.");
       setIsSubmitting(false);
       return;
     }
 
-    if (!customerCode.trim()) {
-      setErrorMessage("Customer code is required.");
+    const transaction = selectedTransactionData;
+
+    if (!transaction) {
+      setErrorMessage("Selected transaction could not be found.");
       setIsSubmitting(false);
       return;
     }
 
-    if (!transactionNumber.trim()) {
-      setErrorMessage("Transaction number is required.");
+    if (transaction.transactionType !== "SALES") {
+      setErrorMessage("Only SALES transactions can be added to Sales.");
       setIsSubmitting(false);
       return;
     }
 
-    if (rows.length === 0) {
-      setErrorMessage("At least one transaction row is required.");
+    if (!transaction.customerCode.trim()) {
+      setErrorMessage("The selected transaction has no customer.");
       setIsSubmitting(false);
       return;
     }
 
-    if (rows.some((row) => !row.date.trim())) {
-      setErrorMessage("All transaction rows must have a date.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (rows.some((row) => row.qty <= 0)) {
-      setErrorMessage("Quantity must be greater than zero for each row.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!selectedReport) {
-      setErrorMessage("Please select a report.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const report = selectedReportData;
-
-    if (!report) {
-      setErrorMessage("Selected report could not be found.");
+    if (!transaction.rows.length) {
+      setErrorMessage("The selected transaction has no items.");
       setIsSubmitting(false);
       return;
     }
 
     // Build payload matching SalesSchema
     const salesPayload = {
-      customerCode: customerCode.trim(),
-      transactionNumber: transactionNumber.trim(),
-      reportId: report._id,
-      reportTransaction: report.transactionNumber,
-      date,
-      productId: report.productId,
-      productName: report.productName,
-      productPrice: report.productPrice,
-      periodStart,
-      periodEnd,
-      rows: displayRows,
-      total: grandTotal,
+      transactionNumber: transaction.transactionNumber,
     };
 
     console.log("Sales payload:", salesPayload);
@@ -196,14 +125,7 @@ const AdminSalesHeaderForm = () => {
 
       setMessage(result?.message || "Sales Header created successfully.");
       // Reset form
-      setDate("");
-      setCustomerCode("");
-      setSelectedCustomer("");
-      setTransactionNumber("");
-      setRows([{ id: "row-1", date: "", qty: 0, price: 0 }]);
-      setSelectedReport("");
-      setPeriodStart("");
-      setPeriodEnd("");
+      setSelectedTransaction("");
       router.push("/admin/sales");
     } catch (error) {
       console.error("Error during form submission:", error);
@@ -217,113 +139,50 @@ const AdminSalesHeaderForm = () => {
     }
   };
 
-  // Dropdown list of customers for the sales header.
+  //Dropdown list of transactions for the sales header.
   useEffect(() => {
-    async function loadCustomers() {
+    async function loadTransactions() {
       try {
-        const response = await fetch("/admin/routes/customers", {
+        const response = await fetch("/admin/routes/transactions", {
           cache: "no-store",
         });
+
         if (!response.ok) {
-          throw new Error("Failed to load customer options");
+          throw new Error("Failed to load transaction options");
         }
 
         const result = await response.json();
-        const options = (result?.customers ?? []).filter(
-          (customer: CustomerOption) => customer.customerCode,
-        );
 
-        setCustomers(options);
+        const options = (result?.transactions ?? [])
+          .filter(
+            (transaction: TransactionOption) =>
+              transaction.transactionType === "SALES",
+          )
+          .map((transaction: TransactionOption) => ({
+            _id: transaction._id,
+            transactionNumber: transaction.transactionNumber,
+            customerCode: transaction.customerCode ?? "",
+            transactionType: transaction.transactionType,
+            date: transaction.date ?? "",
+            rows: transaction.rows ?? [],
+            total:
+              typeof transaction.total === "number"
+                ? transaction.total
+                : Number(transaction.total) || 0,
+          }));
+
+        setTransactions(options);
+
         if (options.length > 0) {
-          const firstCustomer = options[0].customerCode ?? "";
-          setSelectedCustomer(firstCustomer);
-          setCustomerCode(firstCustomer);
+          setSelectedTransaction(options[0].transactionNumber);
         }
       } catch (error) {
-        console.error(error);
+        console.error("Failed to load transactions:", error);
       }
     }
 
-    loadCustomers();
+    loadTransactions();
   }, []);
-
-  //Dropdown list of reports for the sales header.
-  useEffect(() => {
-    async function loadReports() {
-      try {
-        const response = await fetch("/admin/routes/reports", {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          throw new Error("Failed to load reports options");
-        }
-        const result = await response.json();
-        const options = (result?.reports ?? []).map(
-          (reports: ReportOption) => ({
-            _id: reports._id,
-            transactionNumber: reports.transactionNumber ?? reports._id,
-            productId: reports.productId ?? reports.productName ?? reports._id,
-            productName: reports.productName ?? "",
-            productPrice:
-              typeof reports.productPrice === "number"
-                ? reports.productPrice
-                : Number(reports.productPrice) || 0,
-            periodStart: reports.periodStart ?? "",
-            periodEnd: reports.periodEnd ?? "",
-            total: reports.total ?? 0,
-            rows: reports.rows ?? [],
-          }),
-        );
-        setReports(options);
-        if (options.length > 0) {
-          const first = options[0];
-
-          setSelectedReport(first.transactionNumber);
-          setPeriodStart(first.periodStart);
-          setPeriodEnd(first.periodEnd);
-
-          setRows(
-            first.rows.length > 0
-              ? first.rows.map((row: TransactionRow, index: number) => ({
-                  id: `row-${index + 1}`,
-                  date: row.date,
-                  qty: row.qty,
-                  price: row.price,
-                }))
-              : [
-                  {
-                    id: "row-1",
-                    date: "",
-                    qty: 0,
-                    price: first.productPrice,
-                  },
-                ],
-          );
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    loadReports();
-  }, []);
-
-  //The syntax to remove, and update rows in the transaction table.
-
-  const updateRow = (rowId: string, changes: Partial<TransactionRow>) => {
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === rowId ? { ...row, ...changes } : row,
-      ),
-    );
-  };
-
-  const removeRow = (rowId: string) => {
-    setRows((currentRows) =>
-      currentRows.length > 1
-        ? currentRows.filter((row) => row.id !== rowId)
-        : currentRows,
-    );
-  };
 
   return (
     //Actual Form Syntax.
@@ -350,63 +209,62 @@ const AdminSalesHeaderForm = () => {
             }}
           >
             <label
-              htmlFor="date"
-              className="mb-2 font-semibold text-prince-shadow/50 "
+              htmlFor="customer-code"
+              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
             >
-              Date:
+              Customer Code:
             </label>
+
             <input
+              id="customer-code"
+              type="text"
+              value={selectedTransactionData?.customerCode ?? ""}
+              readOnly
+              className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700"
+            />
+
+            <label
+              htmlFor="transaction-date"
+              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+            >
+              Transaction Date:
+            </label>
+
+            <input
+              id="transaction-date"
               type="date"
-              id="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+              value={selectedTransactionData?.date ?? ""}
+              readOnly
+              className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700"
             />
             <label
-              htmlFor="customercode"
-              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
-            >
-              Customer:
-            </label>
-            <select
-              id="customercode"
-              name="customer-code"
-              value={selectedCustomer}
-              onChange={(e) => {
-                const value = e.target.value;
-                setSelectedCustomer(value);
-                setCustomerCode(value);
-              }}
-              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            >
-              <option value="">Select a customer</option>
-              {customers.map((customer) => (
-                <option
-                  key={customer.customerCode ?? customer._id}
-                  value={customer.customerCode ?? customer._id}
-                >
-                  {customer.customerCode} - {customer.customerName}
-                </option>
-              ))}
-            </select>
-            <label
-              htmlFor="transactionnumber"
-              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+              htmlFor="transaction-number"
+              className="mb-2 mt-4 font-semibold text-prince-shadow text-shadow-sm"
             >
               Transaction Number:
             </label>
 
-            <input
-              id="transactionnumber"
-              type="text"
-              value={transactionNumber}
-              onChange={(e) => setTransactionNumber(e.target.value)}
-              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
+            <select
+              id="transaction-number"
+              value={selectedTransaction}
+              onChange={(e) => setSelectedTransaction(e.target.value)}
+              className="rounded-md border border-prince-yellow p-2 text-slate-700"
+            >
+              <option value="">Select a transaction</option>
+
+              {transactions.map((transaction) => (
+                <option
+                  key={transaction.transactionNumber}
+                  value={transaction.transactionNumber}
+                >
+                  {transaction.transactionNumber} - {transaction.date} -{" "}
+                  {transaction.customerCode}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* This section is the 5-column input fields that input data for products.
-            for the sales header.*/}
+          {/* This section is for inputting product data.*/}
           <div className="mt-4 w-full rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
             <h2
               className="font-bold text-2xl text-prince-red text-shadow-sm mb-4"
@@ -427,75 +285,47 @@ const AdminSalesHeaderForm = () => {
                     }}
                   >
                     <th className="border border-prince-yellow p-2 text-left">
-                      Product Date:
+                      Product ID
                     </th>
+
+                    <th className="border border-prince-yellow p-2 text-left">
+                      Product Name
+                    </th>
+
                     <th className="border border-prince-yellow p-2 text-center w-24">
                       Qty
                     </th>
-                    <th className="border border-prince-yellow p-2 text-center w-28">
-                      Unit Price
+
+                    <th className="border border-prince-yellow p-2 text-center w-32">
+                      Unit Price ({currency})
                     </th>
-                    <th className="border border-prince-yellow p-2 text-center w-28">
-                      Total
-                    </th>
-                    <th className="border border-prince-yellow p-2 text-center w-20">
-                      Action
+
+                    <th className="border border-prince-yellow p-2 text-center w-32">
+                      Total ({currency})
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayRows.map((row) => (
                     <tr key={row.id} className="hover:bg-prince-yellow/10">
-                      <td
-                        className="border border-prince-yellow p-2"
-                        style={{
-                          fontFamily: "var(--font-body)",
-                        }}
-                      >
-                        <div className="text-center">{row.date}</div>
+                      <td className="border border-prince-yellow p-2">
+                        {row.productId}
                       </td>
-                      <td className="border border-prince-yellow p-2 text-center">
-                        <input
-                          type="number"
-                          value={row.qty}
-                          onChange={(e) =>
-                            updateRow(row.id, {
-                              qty: Number(e.target.value) || 0,
-                            })
-                          }
-                          min="0"
-                          className="w-full rounded-md border border-gray-300 p-1 text-slate-700 text-center"
-                        />
-                      </td>
-                      <td className="border border-prince-yellow p-2 text-center">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={row.price}
-                            readOnly
-                            min="0"
-                            className="w-full rounded-md border border-gray-300 p-1 text-slate-700 text-center"
-                          />
 
-                          <span className="text-xs font-semibold text-slate-600">
-                            {currency}
-                          </span>
-                        </div>
+                      <td className="border border-prince-yellow p-2">
+                        {row.productName}
                       </td>
-                      <td className="border border-prince-yellow p-2 text-center font-semibold">
-                        {row.qty * row.price > 0
-                          ? `${(row.qty * row.price).toFixed(2)} ${currency}`
-                          : `0.00 ${currency}`}
-                      </td>
+
                       <td className="border border-prince-yellow p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(row.id)}
-                          className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
+                        {row.qty}
+                      </td>
+
+                      <td className="border border-prince-yellow p-2 text-center">
+                        {row.price.toFixed(2)} {currency}
+                      </td>
+
+                      <td className="border border-prince-yellow p-2 text-center font-semibold">
+                        {(row.qty * row.price).toFixed(2)} {currency}
                       </td>
                     </tr>
                   ))}
@@ -517,95 +347,6 @@ const AdminSalesHeaderForm = () => {
               >
                 Grand Total: {currency} {""} {grandTotal.toFixed(2)}
               </span>
-            </div>
-          </div>
-
-          <label
-            htmlFor="report-transaction"
-            className="mb-2 mt-4 font-semibold text-prince-shadow text-shadow-sm"
-            style={{
-              fontFamily: "var(--font-heading)",
-            }}
-          >
-            Report Number:
-          </label>
-          <select
-            id="report-transaction"
-            name="report-id"
-            value={selectedReport}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSelectedReport(value);
-
-              const report = reports.find((r) => r.transactionNumber === value);
-
-              if (!report) return;
-
-              setPeriodStart(report.periodStart);
-              setPeriodEnd(report.periodEnd);
-
-              setRows(
-                report.rows.length > 0
-                  ? report.rows.map((row, index) => ({
-                      id: `row-${index + 1}`,
-                      date: row.date,
-                      qty: row.qty,
-                      price: row.price,
-                    }))
-                  : [
-                      {
-                        id: "row-1",
-                        date: "",
-                        qty: 0,
-                        price: report.productPrice,
-                      },
-                    ],
-              );
-            }}
-            className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-          >
-            {reports.map((reports) => (
-              <option
-                key={reports.transactionNumber ?? reports._id}
-                value={reports.transactionNumber ?? reports._id}
-              >
-                {reports.transactionNumber} - {reports.periodStart} to{" "}
-                {reports.periodEnd}
-              </option>
-            ))}
-          </select>
-
-          <div className="mt-4 grid grid-cols-2 gap-4 w-full">
-            <div className="flex flex-col">
-              <label
-                htmlFor="periodStart"
-                className="mb-2 font-semibold text-prince-shadow/50"
-              >
-                Period Start:
-              </label>
-              <input
-                id="periodStart"
-                type="date"
-                value={periodStart}
-                readOnly
-                className="rounded-md border border-prince-yellow p-2 text-slate-700 bg-gray-100"
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label
-                htmlFor="periodEnd"
-                className="mb-2 font-semibold text-prince-shadow/50"
-              >
-                Period End:
-              </label>
-              <input
-                id="periodEnd"
-                type="date"
-                value={periodEnd}
-                readOnly
-                className="rounded-md border border-prince-yellow p-2 text-slate-700 bg-gray-100"
-              />
             </div>
           </div>
 

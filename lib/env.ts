@@ -22,9 +22,9 @@ function parseEnvFile(filePath: string) {
     const rawValue = trimmed.slice(separatorIndex + 1).trim();
     const value = rawValue.replace(/^['"]|['"]$/g, "");
 
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
+    // Local project env files must win over any stale OS-level environment
+    // variables so we do not silently connect to an old host like 89.192.9.40.
+    process.env[key] = value;
   }
 }
 
@@ -80,4 +80,6 @@ export const env = {
   MONGODB_SETTINGS_DB: process.env.MONGODB_SETTINGS_DB,
   MONGODB_CUSTOMERS_URI: process.env.MONGODB_CUSTOMERS_URI,
   MONGODB_CUSTOMERS_DB: process.env.MONGODB_CUSTOMERS_DB,
+  MONGODB_TRANSACTIONS_URI: process.env.MONGODB_TRANSACTIONS_URI,
+  MONGODB_TRANSACTIONS_DB: process.env.MONGODB_TRANSACTIONS_DB,
 };

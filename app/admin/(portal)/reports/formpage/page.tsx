@@ -1,5 +1,5 @@
 import React from "react";
-import AdminSalesReportForm from "../components/reportform";
+import AdminSalesReportForm from "../components/reportsform";
 
 export const metadata = {
   title: "Here is the page for making your Sales Reports",

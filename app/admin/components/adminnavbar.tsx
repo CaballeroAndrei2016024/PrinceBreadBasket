@@ -31,6 +31,11 @@ const AdminBarItems: NavItem[] = [
     icon: "/newreports.png",
   },
   {
+    name: "Transactions",
+    href: "/admin/transactions",
+    icon: "/transactions.png",
+  },
+  {
     name: "Logs",
     href: "/admin/logs",
     icon: "/newlogs.png",

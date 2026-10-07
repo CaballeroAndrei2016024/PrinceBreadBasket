@@ -17,7 +17,6 @@ const ReportsList = ({ reports }: ReportsListProps) => {
     getSettings,
     getSettings,
   );
-
   const prefix = settings.receiptPrefix || "PB-";
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
@@ -49,7 +48,7 @@ const ReportsList = ({ reports }: ReportsListProps) => {
               <div
                 key={
                   report._id ??
-                  `${report.productId}-${report.periodStart}-${report.periodEnd}`
+                  `${report.transactionNumber}-${report.periodStart}-${report.periodEnd}`
                 }
                 className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
               >

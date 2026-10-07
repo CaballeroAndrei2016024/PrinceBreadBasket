@@ -112,14 +112,6 @@ export async function POST(request: NextRequest) {
     const imageBase64 = imageBuffer.toString("base64");
 
     const client = await getProductClient();
-    // Check what URI/DB is running.
-    try {
-      console.log("MONGODB_PRODUCTS_URI=", env.MONGODB_PRODUCTS_URI);
-      console.log("MONGODB_PRODUCTS_DB=", env.MONGODB_PRODUCTS_DB);
-    } catch (e) {
-      console.error("Failed to log env vars for MongoDB", e);
-    }
-
     const db = client.db(env.MONGODB_PRODUCTS_DB || "products");
     const productsCollection = db.collection("products");
 

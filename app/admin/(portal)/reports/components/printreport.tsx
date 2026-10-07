@@ -8,7 +8,7 @@ import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
-import { AdminReport } from "@/app/admin/types";
+import type { AdminReport } from "@/app/admin/types";
 
 type Props = {
   report: AdminReport;
@@ -28,7 +28,7 @@ export default function AdminPrintReport({ report }: Props) {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Report-${report.productId}-${report.periodStart}-${report.periodEnd}`,
+    documentTitle: `Report-${report.transactionNumber}-${report.periodStart}-${report.periodEnd}`,
   });
 
   return (
@@ -51,7 +51,8 @@ export default function AdminPrintReport({ report }: Props) {
 
       <div
         style={{
-          display: "none",
+          overflow: "hidden",
+          height: 0,
           fontFamily: "var(--font-body)",
         }}
       >
@@ -68,17 +69,8 @@ export default function AdminPrintReport({ report }: Props) {
           <hr />
 
           <p>
-            <strong>Transaction Number:</strong>
-            {prefix}
+            <strong>Transaction Number:</strong> {prefix}
             {report.transactionNumber}
-          </p>
-
-          <p>
-            <strong>Product ID:</strong> {report.productId}
-          </p>
-
-          <p>
-            <strong>Product Name:</strong> {report.productName}
           </p>
 
           <p>
@@ -97,7 +89,13 @@ export default function AdminPrintReport({ report }: Props) {
           >
             <thead>
               <tr>
-                <th style={{ border: "1px solid black", padding: 8 }}>Date</th>
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product ID
+                </th>
+
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product Name
+                </th>
 
                 <th style={{ border: "1px solid black", padding: 8 }}>
                   Quantity
@@ -115,7 +113,11 @@ export default function AdminPrintReport({ report }: Props) {
               {report.rows.map((row) => (
                 <tr key={row.id}>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {new Date(row.date).toLocaleDateString()}
+                    {row.productId}
+                  </td>
+
+                  <td style={{ border: "1px solid black", padding: 8 }}>
+                    {row.productName}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
@@ -123,13 +125,11 @@ export default function AdminPrintReport({ report }: Props) {
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {currency}
-                    {row.price.toFixed(2)}
+                    {currency} {row.price.toFixed(2)}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {currency}
-                    {(row.qty * row.price).toFixed(2)}
+                    {currency} {(row.qty * row.price).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -139,8 +139,7 @@ export default function AdminPrintReport({ report }: Props) {
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {currency}
-            {report.total.toFixed(2)}
+            Grand Total: {currency} {report.total.toFixed(2)}
           </h2>
         </div>
       </div>

@@ -1,89 +1,164 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { getSalesClient, getReportsClient } from "@/lib/mongodb";
+import { getSalesClient, getTransactionsClient } from "@/lib/mongodb";
 import { SalesSchema } from "@/lib/validators/sales";
 
 export const runtime = "nodejs";
 
-// Interface for reports documents.
+// Interface for sales header documents.
 interface SalesDocument {
   _id?: { toString?: () => string } | string;
   createdAt?: { toISOString?: () => string } | string | Date;
   [key: string]: unknown;
 }
 
+//GET- Retrieve a sales header.
 export async function GET() {
   try {
-    const client = await getSalesClient();
-    // Client check.
-    if (!client) {
+    // Sales Client check.
+    const salesClient = await getSalesClient();
+
+    if (!salesClient) {
       throw new Error("Sales database client could not be initialized.");
     }
-    const db = client.db(env.MONGODB_SALES_DB || "sales");
-    const salesCollection = db.collection("sales");
+
+    const salesDb = salesClient.db(env.MONGODB_SALES_DB || "sales");
+    const salesCollection = salesDb.collection("sales");
+
+    // Get the Sales Header references.
+
     const sales = await salesCollection
       .find({})
       .project({
         _id: 1,
+        transactionId: 1,
         transactionNumber: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .sort({ transactionNumber: 1 })
+      .toArray();
+
+    // No Sales Headers saved yet.
+    if (sales.length === 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          sales: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    // Transaction Client check.
+    const transactionsClient = await getTransactionsClient();
+
+    if (!transactionsClient) {
+      throw new Error("Transactions database client could not be initialized.");
+    }
+
+    const transactionsDb = transactionsClient.db(
+      env.MONGODB_TRANSACTIONS_DB || "transactions",
+    );
+
+    const transactionsCollection = transactionsDb.collection("transactions");
+
+    // Get all transaction numbers referenced by Sales Headers.
+    const transactionNumbers = sales
+      .map((sale) => String(sale.transactionNumber ?? "").trim())
+      .filter(Boolean);
+
+    // Retrieve the CURRENT versions of those transactions.
+    const transactions = await transactionsCollection
+      .find({
+        transactionNumber: {
+          $in: transactionNumbers,
+        },
+      })
+      .project({
+        _id: 1,
+        transactionNumber: 1,
+        transactionType: 1,
         customerCode: 1,
         date: 1,
-
-        reportId: 1,
-        reportTransaction: 1,
-
-        productId: 1,
-        productName: 1,
-        productPrice: 1,
-
-        periodStart: 1,
-        periodEnd: 1,
-
         rows: 1,
         total: 1,
-
         createdAt: 1,
         updatedAt: 1,
       })
       .toArray();
-    // Serialize ObjectId to string so JSON can be sent to the client
-    const serialized = sales.map((sale: SalesDocument) => ({
-      ...sale,
 
-      _id: sale._id?.toString?.() ?? String(sale._id ?? ""),
+    // Create a lookup map using said transactionNumber.
+    const transactionMap = new Map(
+      transactions.map((transaction) => [
+        transaction.transactionNumber,
+        transaction,
+      ]),
+    );
 
-      date:
-        sale.date instanceof Date
-          ? sale.date.toISOString().split("T")[0]
-          : sale.date,
+    //Base the current sales header on the current Transaction.
+    const serialized = sales
+      .map((sale) => {
+        const transaction = transactionMap.get(
+          String(sale.transactionNumber ?? "").trim(),
+        );
 
-      periodStart:
-        sale.periodStart instanceof Date
-          ? sale.periodStart.toISOString().split("T")[0]
-          : sale.periodStart,
+        // The referenced transaction no longer exists.
+        if (!transaction) {
+          return null;
+        }
 
-      periodEnd:
-        sale.periodEnd instanceof Date
-          ? sale.periodEnd.toISOString().split("T")[0]
-          : sale.periodEnd,
+        // The transaction was changed from SALES to another type.
+        if (transaction.transactionType !== "SALES") {
+          return null;
+        }
 
-      createdAt:
-        sale.createdAt instanceof Date
-          ? sale.createdAt.toISOString()
-          : sale.createdAt,
+        return {
+          // Keep the Sales Header's own database identity, as well as the transactionId.
+          _id: sale._id?.toString?.() ?? String(sale._id ?? ""),
 
-      updatedAt:
-        sale.updatedAt instanceof Date
-          ? sale.updatedAt.toISOString()
-          : sale.updatedAt,
-    }));
+          transactionId:
+            sale.transactionId ?? transaction._id?.toString?.() ?? undefined,
+
+          // Use the CURRENT transaction values.
+          transactionNumber: transaction.transactionNumber,
+          customerCode: transaction.customerCode ?? "",
+
+          date:
+            transaction.date instanceof Date
+              ? transaction.date.toISOString().split("T")[0]
+              : String(transaction.date ?? ""),
+
+          rows: Array.isArray(transaction.rows) ? transaction.rows : [],
+
+          total:
+            typeof transaction.total === "number"
+              ? transaction.total
+              : Number(transaction.total) || 0,
+
+          createdAt:
+            sale.createdAt instanceof Date
+              ? sale.createdAt.toISOString()
+              : sale.createdAt,
+
+          updatedAt:
+            sale.updatedAt instanceof Date
+              ? sale.updatedAt.toISOString()
+              : sale.updatedAt,
+        };
+      })
+      .filter((sale): sale is NonNullable<typeof sale> => sale !== null);
 
     return NextResponse.json(
-      { success: true, sales: serialized },
+      {
+        success: true,
+        sales: serialized,
+      },
       { status: 200 },
     );
   } catch (error) {
     console.error("Failed to fetch sales:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -94,9 +169,24 @@ export async function GET() {
   }
 }
 
+//POST- add a sales header to the database.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    const client = await getSalesClient();
+    if (!client) {
+      throw new Error("Sales database client could not be initialized.");
+    }
+
+    const db = client.db(env.MONGODB_SALES_DB || "sales");
+    const salesCollection = db.collection("sales");
+
+    await salesCollection.createIndex(
+      { transactionNumber: 1 },
+      { unique: true },
+    );
+
     const validationResult = SalesSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -109,33 +199,45 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
     const sales = validationResult.data;
 
-    const reportsClient = await getReportsClient();
+    const transactionsClient = await getTransactionsClient();
 
-    if (!reportsClient) {
-      throw new Error("Reports database client could not be initialized.");
+    if (!transactionsClient) {
+      throw new Error("Transactions database client could not be initialized.");
     }
 
-    const reportsDb = reportsClient.db(env.MONGODB_REPORTS_DB || "reports");
+    const transactionsDb = transactionsClient.db(
+      env.MONGODB_TRANSACTIONS_DB || "transactions",
+    );
 
-    const reportsCollection = reportsDb.collection("reports");
+    const transactionsCollection = transactionsDb.collection("transactions");
 
-    const report = await reportsCollection.findOne({
-      transactionNumber: sales.reportTransaction,
+    const transaction = await transactionsCollection.findOne({
+      transactionNumber: sales.transactionNumber,
     });
 
-    if (!report) {
+    if (!transaction) {
       return NextResponse.json(
         {
           success: false,
-          message: "Report not found.",
+          message: "Transaction not found.",
         },
         { status: 404 },
       );
     }
 
-    const client = await getSalesClient();
+    if (transaction.transactionType !== "SALES") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Selected transaction is not a SALES transaction.",
+        },
+        { status: 400 },
+      );
+    }
+
     // Check what URI/DB is running.
     try {
       console.log("MONGODB_SALES_URI present?", Boolean(env.MONGODB_SALES_URI));
@@ -144,34 +246,13 @@ export async function POST(request: NextRequest) {
       console.error("Failed to log env vars for MongoDB", e);
     }
 
-    if (!client) {
-      throw new Error("Sales database client could not be initialized.");
-    }
-
-    const db = client.db(env.MONGODB_SALES_DB || "sales");
-    const salesCollection = db.collection("sales");
-
     const salesDocument = {
-      transactionNumber: sales.transactionNumber,
-
-      // Report ID.
-      reportId: report._id.toString(),
-
-      // Business transaction number from the Report Sheet as referrence.
-      reportTransaction: sales.reportTransaction,
-
-      customerCode: sales.customerCode,
-      date: sales.date,
-
-      rows: sales.rows,
-      total: sales.total,
-      productId: report.productId,
-      productName: report.productName,
-      productPrice: report.productPrice,
-
-      periodStart: report.periodStart,
-      periodEnd: report.periodEnd,
-
+      transactionId: transaction._id.toString(),
+      transactionNumber: transaction.transactionNumber,
+      customerCode: transaction.customerCode,
+      date: transaction.date,
+      rows: transaction.rows,
+      total: transaction.total,
       createdAt: new Date(),
     };
 
@@ -199,6 +280,20 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Sales Header submission failed:", error);
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This transaction is already in the Sales Header.",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       {
         success: false,

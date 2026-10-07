@@ -28,7 +28,7 @@ type CustomerRecord = {
 };
 
 //Find a customer by its customerCode.
-async function getCustomerById(customerCode: string) {
+async function getCustomerByCode(customerCode: string) {
   //Client check.
   const client = await getCustomerClient();
   if (!client) {
@@ -66,7 +66,7 @@ async function getCustomerById(customerCode: string) {
 
 export default async function CustomerPage({ params }: PageProps) {
   const { customerCode } = await params;
-  const customer = await getCustomerById(customerCode.trim());
+  const customer = await getCustomerByCode(customerCode.trim());
 
   if (!customer) {
     notFound();

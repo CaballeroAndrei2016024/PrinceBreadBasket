@@ -3,10 +3,16 @@
 // Mandatory imports and "use client"
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { AdminProductOption } from "./inventory.types";
-import { AdminLogInventoryRow, AdminSalesLog } from "@/app/admin/types";
+import type { AdminLogInventoryRow, AdminSalesLog } from "@/app/admin/types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
+
+type AdminProductOption = {
+  _id?: string;
+  productId: string;
+  productName: string;
+  productPrice: number;
+};
 
 interface LogDetailProps {
   log: AdminSalesLog;
@@ -35,6 +41,11 @@ function LogDetail({ log }: LogDetailProps) {
   const [additionRows, setAdditionRows] = useState<AdminLogInventoryRow[]>(
     log.additionRows,
   );
+  const [salesRows, setSalesRows] = useState<AdminLogInventoryRow[]>(
+    log.salesRows,
+  );
+  const [isEditingSalesRows, setIsEditingSalesRows] = useState(false);
+  const [isSavingSalesRows, setIsSavingSalesRows] = useState(false);
 
   const [products, setProducts] = useState<AdminProductOption[]>([]);
   const [endingRows, setEndingRows] = useState<AdminLogInventoryRow[]>(
@@ -66,7 +77,10 @@ function LogDetail({ log }: LogDetailProps) {
     .concat(additionRows)
     .reduce((sum, row) => sum + row.qty * row.price, 0);
 
-  const salesTotal = totalAvailable - endingTotal;
+  const salesTotal = salesRows.reduce(
+    (sum, row) => sum + row.qty * row.price,
+    0,
+  );
 
   useEffect(() => {
     async function loadProducts() {
@@ -102,6 +116,61 @@ function LogDetail({ log }: LogDetailProps) {
     loadProducts();
   }, []);
 
+  const updateSalesQuantity = (rowId: string, qty: number) => {
+    setSalesRows((currentRows) =>
+      currentRows.map((row) => (row.id === rowId ? { ...row, qty } : row)),
+    );
+  };
+
+  const deleteSalesRow = (rowId: string) => {
+    setSalesRows((currentRows) =>
+      currentRows.filter((row) => row.id !== rowId),
+    );
+  };
+
+  const saveSalesRows = async () => {
+    setIsSavingSalesRows(true);
+    setErrorMessage(null);
+
+    const formData = new FormData();
+    formData.set("logId", log._id ?? "");
+    formData.set(
+      "logData",
+      JSON.stringify({
+        periodStart: log.periodStart,
+        periodEnd: log.periodEnd,
+        beginningRows: log.beginningRows,
+        additionRows: log.additionRows,
+        salesRows,
+        endingRows: log.endingRows,
+      }),
+    );
+
+    try {
+      const response = await fetch("/admin/routes/logs", {
+        method: "PUT",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to update Sales values.");
+      }
+
+      setIsEditingSalesRows(false);
+      router.refresh();
+    } catch (error) {
+      console.error("Sales values update failed:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while updating Sales values.",
+      );
+    } finally {
+      setIsSavingSalesRows(false);
+    }
+  };
+
   // How the Beginning Inventory works.
 
   const addBeginningRow = () => {
@@ -110,6 +179,7 @@ function LogDetail({ log }: LogDetailProps) {
       {
         id: `row-${Date.now()}-${currentRows.length}`,
         productId: "",
+        productName: "",
         qty: 0,
         price: 0,
       },
@@ -127,6 +197,7 @@ function LogDetail({ log }: LogDetailProps) {
           ? {
               ...row,
               productId,
+              productName: selectedProduct?.productName ?? "",
               price: selectedProduct?.productPrice ?? 0,
             }
           : row,
@@ -142,7 +213,7 @@ function LogDetail({ log }: LogDetailProps) {
 
   const updateBeginningRow = (
     index: number,
-    changes: Partial<AdminLogInventoryRow>,
+    changes: Partial<Pick<AdminLogInventoryRow, "qty">>,
   ) => {
     setBeginningRows((currentRows) => {
       const nextRows = currentRows.map((row, rowIndex) =>
@@ -180,6 +251,7 @@ function LogDetail({ log }: LogDetailProps) {
       {
         id: `row-${Date.now()}-${currentRows.length}`,
         productId: "",
+        productName: "",
         qty: 0,
         price: 0,
       },
@@ -197,6 +269,7 @@ function LogDetail({ log }: LogDetailProps) {
           ? {
               ...row,
               productId,
+              productName: selectedProduct?.productName ?? "",
               price: selectedProduct?.productPrice ?? 0,
             }
           : row,
@@ -212,7 +285,7 @@ function LogDetail({ log }: LogDetailProps) {
 
   const updateAdditionRow = (
     rowId: string,
-    changes: Partial<AdminLogInventoryRow>,
+    changes: Partial<Pick<AdminLogInventoryRow, "qty">>,
   ) => {
     setAdditionRows((currentRows) => {
       const nextRows = currentRows.map((row) =>
@@ -256,6 +329,7 @@ function LogDetail({ log }: LogDetailProps) {
       string,
       {
         productId: string;
+        productName: string;
         price: number;
       }
     >();
@@ -268,6 +342,7 @@ function LogDetail({ log }: LogDetailProps) {
       if (!grouped.has(key)) {
         grouped.set(key, {
           productId: row.productId,
+          productName: row.productName,
           price: row.price,
         });
       }
@@ -284,6 +359,7 @@ function LogDetail({ log }: LogDetailProps) {
         currentMap.get(key) ?? {
           id: `end-${key}`,
           productId: item.productId,
+          productName: item.productName,
           qty: 0,
           price: item.price,
         }
@@ -297,9 +373,7 @@ function LogDetail({ log }: LogDetailProps) {
     );
   };
 
-  // -----------------
   // Function to update Sales Log.
-  // -----------------
 
   async function handleUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -346,6 +420,24 @@ function LogDetail({ log }: LogDetailProps) {
       return;
     }
 
+    const availableQuantities = new Map<string, number>();
+    for (const row of [...beginningRows, ...additionRows]) {
+      availableQuantities.set(
+        row.productId,
+        (availableQuantities.get(row.productId) ?? 0) + row.qty,
+      );
+    }
+
+    if (
+      endingRows.some(
+        (row) => row.qty > (availableQuantities.get(row.productId) ?? 0),
+      )
+    ) {
+      setErrorMessage("Ending inventory cannot exceed available inventory.");
+      setIsSaving(false);
+      return;
+    }
+
     const formData = new FormData();
 
     formData.set("logId", log._id ?? "");
@@ -358,6 +450,7 @@ function LogDetail({ log }: LogDetailProps) {
         periodEnd,
         beginningRows,
         additionRows,
+        salesRows,
         endingRows,
       }),
     );
@@ -539,19 +632,133 @@ function LogDetail({ log }: LogDetailProps) {
               <p className="mt-4 font-semibold text-red-600">{errorMessage}</p>
             )}
 
-            <div className="mt-6 flex justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(true);
-                  setMessage(null);
-                  setErrorMessage(null);
-                }}
-                className="rounded-md bg-prince-green px-5 py-2 font-bold text-prince-shadow/50 transition hover:bg-prince-orange"
-              >
-                Edit Sales Log
-              </button>
+            <div className="mt-6 text-left">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-prince-shadow/50">
+                  Sales Values
+                </h3>
+                {isEditingSalesRows ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={saveSalesRows}
+                      disabled={isSavingSalesRows}
+                      className="rounded-md bg-prince-green px-4 py-2 font-bold text-prince-shadow/50 transition hover:bg-prince-orange disabled:opacity-50"
+                    >
+                      {isSavingSalesRows ? "SAVING..." : "Save Sales"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSalesRows(log.salesRows);
+                        setIsEditingSalesRows(false);
+                      }}
+                      disabled={isSavingSalesRows}
+                      className="rounded-md bg-slate-300 px-4 py-2 font-bold text-slate-800 transition hover:bg-slate-400 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingSalesRows(true)}
+                    className="rounded-md bg-prince-green px-4 py-2 font-bold text-prince-shadow/50 transition hover:bg-prince-orange"
+                  >
+                    Edit Sales
+                  </button>
+                )}
+              </div>
 
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-prince-green text-white">
+                      <th className="border border-prince-yellow p-2 text-left">
+                        Product ID
+                      </th>
+                      <th className="border border-prince-yellow p-2 text-left">
+                        Product Name
+                      </th>
+                      <th className="border border-prince-yellow p-2 text-center">
+                        Quantity
+                      </th>
+                      <th className="border border-prince-yellow p-2 text-center">
+                        Unit Price
+                      </th>
+                      <th className="border border-prince-yellow p-2 text-center">
+                        Total
+                      </th>
+                      {isEditingSalesRows && (
+                        <th className="border border-prince-yellow p-2 text-center">
+                          Action
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesRows.length > 0 ? (
+                      salesRows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="border border-prince-yellow p-2">
+                            {row.productId}
+                          </td>
+                          <td className="border border-prince-yellow p-2">
+                            {row.productName}
+                          </td>
+                          <td className="border border-prince-yellow p-2 text-center">
+                            {isEditingSalesRows ? (
+                              <input
+                                type="number"
+                                min={0}
+                                value={row.qty}
+                                onChange={(event) =>
+                                  updateSalesQuantity(
+                                    row.id,
+                                    Number(event.target.value) || 0,
+                                  )
+                                }
+                                className="w-full rounded-md border p-1 text-center"
+                              />
+                            ) : (
+                              row.qty
+                            )}
+                          </td>
+                          <td className="border border-prince-yellow p-2 text-center">
+                            {currency} {row.price.toFixed(2)}
+                          </td>
+                          <td className="border border-prince-yellow p-2 text-center font-semibold">
+                            {currency} {(row.qty * row.price).toFixed(2)}
+                          </td>
+                          {isEditingSalesRows && (
+                            <td className="border border-prince-yellow p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => deleteSalesRow(row.id)}
+                                className="rounded-md bg-prince-red px-3 py-1 text-xs font-semibold text-white hover:opacity-80"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={isEditingSalesRows ? 6 : 5}
+                          className="border border-prince-yellow p-4 text-center text-slate-500"
+                        >
+                          No Sales rows.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-center gap-4">
               <button
                 type="button"
                 onClick={handleDelete}
@@ -724,11 +931,7 @@ function LogDetail({ log }: LogDetailProps) {
                         min="0"
                         step="0.01"
                         value={row.price}
-                        onChange={(event) =>
-                          updateBeginningRow(index, {
-                            price: Number(event.target.value),
-                          })
-                        }
+                        readOnly
                         className="w-full rounded-md border p-2"
                         required
                       />
@@ -863,11 +1066,7 @@ function LogDetail({ log }: LogDetailProps) {
                         min="0"
                         step="0.01"
                         value={row.price}
-                        onChange={(event) =>
-                          updateAdditionRow(row.id, {
-                            price: Number(event.target.value),
-                          })
-                        }
+                        readOnly
                         className="w-full rounded-md border p-2"
                         required
                       />
@@ -998,7 +1197,7 @@ function LogDetail({ log }: LogDetailProps) {
             </p>
           </div>
 
-          {/* Summary */}
+          {/* The Calculated Fields, where Sales and Total Available for Sales is calculated. */}
           <div className="mt-6 rounded-lg border border-prince-yellow bg-white p-4">
             <h3 className="text-lg font-bold text-prince-shadow/50">
               Sales Summary

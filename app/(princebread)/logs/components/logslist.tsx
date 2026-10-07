@@ -2,33 +2,12 @@
 
 import Link from "next/link";
 import PrintSalesLog from "./printlogs";
+import type { Log } from "@/app/(princebread)/types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
-export type InventoryRow = {
-  id: string;
-  productId: string;
-  qty: number;
-  price: number;
-};
-
-export type SalesLog = {
-  _id?: string;
-  transactionNumber: string;
-  periodStart: string;
-  periodEnd: string;
-
-  beginningRows: InventoryRow[];
-  additionRows: InventoryRow[];
-  endingRows: InventoryRow[];
-
-  salesPrices: Record<string, number>;
-
-  createdAt?: string;
-};
-
 export type SalesLogListProps = {
-  logs: SalesLog[];
+  logs: Log[];
 };
 
 const SalesLogsList = ({ logs }: SalesLogListProps) => {
@@ -68,11 +47,11 @@ const SalesLogsList = ({ logs }: SalesLogListProps) => {
             {logs.map((log, index) => (
               <div
                 key={log._id ?? log.transactionNumber}
-                className="grid grid-cols-[90px_240px_120px] items-center border-b px-4 py-3"
+                className="grid grid-cols-[90px_240px_120px] items-center gap-x-4 border-b px-4 py-3 bg-prince-green/80"
               >
                 <span>
                   {prefix}
-                  {log.transactionNumber}
+                  {index + 1}
                 </span>
 
                 <span>
@@ -80,7 +59,9 @@ const SalesLogsList = ({ logs }: SalesLogListProps) => {
                   {new Date(log.periodEnd).toLocaleDateString()}
                 </span>
 
-                <PrintSalesLog log={log} />
+                <div className="flex items-center">
+                  <PrintSalesLog log={log} />
+                </div>
               </div>
             ))}
           </div>

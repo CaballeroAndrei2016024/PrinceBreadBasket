@@ -10,6 +10,7 @@ let reportsClientPromise: Promise<MongoClient> | null = null;
 let salesClientPromise: Promise<MongoClient> | null = null;
 let logsClientPromise: Promise<MongoClient> | null = null;
 let customerClientPromise: Promise<MongoClient> | null = null;
+let transactionsClientPromise: Promise<MongoClient> | null = null;
 
 function getEnv(name: string, required = true): string | undefined {
   const value = process.env[name];
@@ -21,7 +22,7 @@ function getEnv(name: string, required = true): string | undefined {
 }
 
 async function connectClient(uri: string, label: string): Promise<MongoClient> {
-  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 });
 
   try {
     await client.connect();
@@ -40,7 +41,10 @@ export async function getProductClient() {
     if (!uri) {
       throw new Error("MONGODB_PRODUCTS_URI is missing.");
     }
-    productClientPromise = connectClient(uri, "products");
+    productClientPromise = connectClient(uri, "products").catch((error) => {
+      productClientPromise = null;
+      throw error;
+    });
   }
 
   return productClientPromise;
@@ -52,7 +56,10 @@ export async function getReportsClient() {
     if (!uri) {
       throw new Error("MONGODB_REPORTS_URI is missing.");
     }
-    reportsClientPromise = connectClient(uri, "reports");
+    reportsClientPromise = connectClient(uri, "reports").catch((error) => {
+      reportsClientPromise = null;
+      throw error;
+    });
   }
 
   return reportsClientPromise;
@@ -64,7 +71,10 @@ export async function getSalesClient() {
     if (!uri) {
       throw new Error("MONGODB_SALES_URI is missing.");
     }
-    salesClientPromise = connectClient(uri, "sales");
+    salesClientPromise = connectClient(uri, "sales").catch((error) => {
+      salesClientPromise = null;
+      throw error;
+    });
   }
 
   return salesClientPromise;
@@ -76,7 +86,10 @@ export async function getLogsClient() {
     if (!uri) {
       throw new Error("MONGODB_LOGS_URI is missing.");
     }
-    logsClientPromise = connectClient(uri, "logs");
+    logsClientPromise = connectClient(uri, "logs").catch((error) => {
+      logsClientPromise = null;
+      throw error;
+    });
   }
 
   return logsClientPromise;
@@ -88,8 +101,28 @@ export async function getCustomerClient() {
     if (!uri) {
       throw new Error("MONGODB_CUSTOMERS_URI is missing.");
     }
-    customerClientPromise = connectClient(uri, "customers");
+    customerClientPromise = connectClient(uri, "customers").catch((error) => {
+      customerClientPromise = null;
+      throw error;
+    });
   }
 
   return customerClientPromise;
+}
+
+export async function getTransactionsClient() {
+  if (!transactionsClientPromise) {
+    const uri = getEnv("MONGODB_TRANSACTIONS_URI");
+    if (!uri) {
+      throw new Error("MONGODB_TRANSACTIONS_URI is missing.");
+    }
+    transactionsClientPromise = connectClient(uri, "transactions").catch(
+      (error) => {
+        transactionsClientPromise = null;
+        throw error;
+      },
+    );
+  }
+
+  return transactionsClientPromise;
 }

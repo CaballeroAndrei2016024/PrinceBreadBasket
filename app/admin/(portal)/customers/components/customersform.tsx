@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 const AdminCustomerRegistrationForm = () => {
+  // Customer Code.
+  const [customerCode, setCustomerCode] = useState("Customer Number here");
   //Use States and Submission checks.
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -72,6 +74,7 @@ const AdminCustomerRegistrationForm = () => {
         throw new Error(firstError || "Failed to save customer.");
       }
 
+      setCustomerCode(result?.customerCode ?? "");
       setMessage(result?.message || "Customer created successfully.");
       formElement.reset();
       setImagePreview(null);
@@ -168,11 +171,11 @@ const AdminCustomerRegistrationForm = () => {
             }}
           >
             <input
-              type="text"
               id="customer-code"
-              name="customer-code"
-              placeholder="Customer Code: C001"
-              className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+              type="text"
+              value={customerCode}
+              readOnly
+              className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             />
             <input
               type="text"

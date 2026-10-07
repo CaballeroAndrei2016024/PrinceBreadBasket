@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { AdminReport } from "../../../types";
+import type { AdminReport } from "../../../types";
 import AdminPrintReport from "./printreport";
-import { useState } from "react";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
@@ -11,7 +10,7 @@ type ReportsListProps = {
   reports: AdminReport[];
 };
 
-const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
+const AdminReportsList = ({ reports }: ReportsListProps) => {
   //Settings
   const settings = useSyncExternalStore(
     subscribeSettings,
@@ -20,7 +19,6 @@ const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
   );
 
   const prefix = settings.receiptPrefix || "PB-";
-  const [reports, setReports] = useState<AdminReport[]>(initialReports);
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -52,7 +50,7 @@ const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
               <div
                 key={
                   report._id ??
-                  `${report.productId}-${report.periodStart}-${report.periodEnd}`
+                  `${report.transactionNumber}-${report.periodStart}-${report.periodEnd}`
                 }
                 className="grid grid-cols-[90px_240px_120px_120px] items-center border-b bg-prince-green/80 px-4 py-3"
               >
@@ -70,7 +68,6 @@ const AdminReportsList = ({ reports: initialReports }: ReportsListProps) => {
 
                 <Link
                   href={`/admin/reports/${report.transactionNumber}`}
-                  key={report.transactionNumber}
                   className="rounded-lg border border-prince-yellow bg-white p-4 shadow-sm"
                 >
                   Edit?

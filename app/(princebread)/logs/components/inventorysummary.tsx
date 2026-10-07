@@ -1,22 +1,29 @@
 "use client";
 //Component Logic for Total Available for Sale and Sales.
 import React from "react";
-import type { InventoryRow, ProductOption } from "./inventory.types";
+import type { TransactionRow } from "@/app/(princebread)/types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type InventorySummaryProps = {
-  products: ProductOption[];
+  beginningRows: TransactionRow[];
+  additionRows: TransactionRow[];
+  salesRows: TransactionRow[];
+  endingRows: TransactionRow[];
+};
 
-  beginningRows: InventoryRow[];
-  additionRows: InventoryRow[];
-  endingRows: InventoryRow[];
+const getQuantity = (rows: TransactionRow[]) => {
+  return rows.reduce((sum, row) => sum + row.qty, 0);
+};
+
+const getValue = (rows: TransactionRow[]) => {
+  return rows.reduce((sum, row) => sum + row.qty * row.price, 0);
 };
 
 const InventorySummary = ({
-  products,
   beginningRows,
   additionRows,
+  salesRows,
   endingRows,
 }: InventorySummaryProps) => {
   //Settings
@@ -26,219 +33,134 @@ const InventorySummary = ({
     getSettings,
   );
   const currency = settings.currency || "PHP";
-  // A + B
-  const grouped = new Map<
-    string,
-    {
-      productId: string;
-      productName: string;
-      price: number;
-      qty: number;
-    }
-  >();
+  // Current form state.
+  const beginningQty = getQuantity(beginningRows);
+  const additionQty = getQuantity(additionRows);
+  const salesQty = getQuantity(salesRows);
+  const endingQty = getQuantity(endingRows);
 
-  for (const row of [...beginningRows, ...additionRows]) {
-    if (!row.productId) continue;
+  const beginningValue = getValue(beginningRows);
+  const additionValue = getValue(additionRows);
+  const salesValue = getValue(salesRows);
+  const endingValue = getValue(endingRows);
 
-    const product = products.find((p) => p.productId === row.productId);
-
-    const productName = product?.productName ?? "";
-
-    const key = `${row.productId}-${row.price}`;
-
-    if (grouped.has(key)) {
-      grouped.get(key)!.qty += row.qty;
-    } else {
-      grouped.set(key, {
-        productId: row.productId,
-        productName,
-        price: row.price,
-        qty: row.qty,
-      });
-    }
-  }
-
-  const totalAvailable = Array.from(grouped.values());
-
-  const totalAvailableGrandTotal = totalAvailable.reduce(
-    (sum, row) => sum + row.qty * row.price,
-    0,
-  );
-
-  //
-  // (A+B)-C
-  //
-  const sales = totalAvailable.map((row) => {
-    const endingQty = endingRows
-      .filter((r) => r.productId === row.productId && r.price === row.price)
-      .reduce((sum, r) => sum + r.qty, 0);
-
-    return {
-      ...row,
-      qty: row.qty - endingQty,
-    };
-  });
-
-  const salesGrandTotal = sales.reduce(
-    (sum, row) => sum + row.qty * row.price,
-    0,
-  );
+  const totalAvailableQty = beginningQty + additionQty;
+  const totalAvailableValue = beginningValue + additionValue;
 
   return (
-    <>
-      {/* Total Available for Sale*/}
+    <div className="mt-4 rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
+      <h2
+        className="font-bold text-2xl text-prince-red text-shadow-sm"
+        style={{
+          fontFamily: "var(--font-heading)",
+        }}
+      >
+        Inventory Summary
+      </h2>
 
-      <div className="mt-4 rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
-        <h1
-          className="font-bold text-2xl text-prince-red"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          Total Available for Sale
-        </h1>
+      <div
+        className="mt-4 overflow-x-auto"
+        style={{
+          fontFamily: "var(--font-body)",
+        }}
+      >
+        <table className="w-full min-w-[28rem] border-collapse text-sm">
+          <thead>
+            <tr className="bg-prince-green text-white">
+              <th className="border border-prince-yellow p-2 text-left">
+                Category
+              </th>
 
-        <div className="mt-4 space-y-2">
-          {totalAvailable.map((row) => (
-            <div
-              key={`${row.productId}-${row.price}`}
-              className="flex flex-col md:flex-row gap-2"
-            >
-              <input
-                readOnly
-                value={row.productId}
-                className="w-full md:w-1/4 rounded border px-2 py-1 bg-gray-100"
-              />
+              <th className="border border-prince-yellow p-2 text-center">
+                Quantity
+              </th>
 
-              <input
-                readOnly
-                value={row.productName}
-                className="w-full md:w-1/4 rounded border px-2 py-1 bg-gray-100"
-              />
+              <th className="border border-prince-yellow p-2 text-center">
+                Value ({currency})
+              </th>
+            </tr>
+          </thead>
 
-              <input
-                readOnly
-                value={row.qty}
-                className="w-full md:w-1/4 rounded border px-2 py-1 bg-gray-100"
-              />
+          <tbody>
+            <tr>
+              <td className="border border-prince-yellow p-2">
+                Beginning Inventory
+              </td>
 
-              <div className="flex items-center gap-1">
-                <input
-                  readOnly
-                  value={row.price.toFixed(2)}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
+              <td className="border border-prince-yellow p-2 text-center">
+                {beginningQty}
+              </td>
 
-                <span className="text-xs font-semibold text-slate-600">
-                  {currency}
-                </span>
-              </div>
+              <td className="border border-prince-yellow p-2 text-center">
+                {beginningValue.toFixed(2)}
+              </td>
+            </tr>
 
-              <div className="flex items-center gap-1">
-                <input
-                  readOnly
-                  value={(row.qty * row.price).toFixed(2)}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
-                <span className="text-xs font-semibold text-slate-600">
-                  {currency}
-                </span>
-              </div>
-            </div>
-          ))}
-          <div className="mt-4 flex justify-end items-center gap-3">
-            <span className="font-bold text-prince-red">Grand Total:</span>
+            <tr>
+              <td className="border border-prince-yellow p-2">Additions</td>
 
-            <div className="w-40">
-              <input
-                readOnly
-                value={totalAvailableGrandTotal.toFixed(2)}
-                className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
-              />
-              <span className="text-xs font-semibold text-slate-600">
-                {currency}
-              </span>
-            </div>
-          </div>
-        </div>
+              <td className="border border-prince-yellow p-2 text-center">
+                {additionQty}
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center">
+                {additionValue.toFixed(2)}
+              </td>
+            </tr>
+
+            <tr>
+              <td className="border border-prince-yellow p-2 font-semibold">
+                Total Available for Sale
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center font-semibold">
+                {totalAvailableQty}
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center font-semibold">
+                {totalAvailableValue.toFixed(2)}
+              </td>
+            </tr>
+
+            <tr>
+              <td className="border border-prince-yellow p-2">Sales</td>
+
+              <td className="border border-prince-yellow p-2 text-center">
+                {salesQty}
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center">
+                {salesValue.toFixed(2)}
+              </td>
+            </tr>
+
+            <tr>
+              <td className="border border-prince-yellow p-2 font-bold">
+                Ending Inventory
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center font-bold">
+                {endingQty}
+              </td>
+
+              <td className="border border-prince-yellow p-2 text-center font-bold">
+                {endingValue.toFixed(2)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      {/* Ending Inventory */}
+      <div className="mt-4 flex justify-end">
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-prince-red">Ending Inventory:</span>
 
-      <div className="mt-4 rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
-        <h1
-          className="font-bold text-2xl text-prince-red"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          Ending Inventory
-        </h1>
-
-        <div className="mt-4 space-y-2">
-          {sales.map((row) => {
-            const key = `${row.productId}-${row.price}`;
-            const sellingPrice = row.price;
-            return (
-              <div
-                key={`${row.productId}-${row.price}`}
-                className="flex flex-col md:flex-row gap-2"
-              >
-                <input
-                  readOnly
-                  value={row.productId}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
-
-                <input
-                  readOnly
-                  value={row.productName}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
-
-                <input
-                  readOnly
-                  value={row.qty}
-                  className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                />
-                <div className="flex items-center gap-1">
-                  <input
-                    readOnly
-                    value={sellingPrice.toFixed(2)}
-                    className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                  />
-
-                  <span className="text-xs font-semibold text-slate-600">
-                    {currency}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <input
-                    readOnly
-                    value={(sellingPrice * row.qty).toFixed(2)}
-                    className="w-full md:w-1/5 rounded border px-2 py-1 bg-gray-100"
-                  />
-                  <span className="text-xs font-semibold text-slate-600">
-                    {currency}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="mt-4 flex justify-end items-center gap-3">
-            <span className="font-bold text-prince-red">Grand Total:</span>
-
-            <div className="w-40">
-              <input
-                readOnly
-                value={salesGrandTotal.toFixed(2)}
-                className="w-full rounded border border-prince-yellow bg-prince-green/20 px-2 py-1 font-bold text-right"
-              />
-
-              <span className="text-xs font-semibold text-slate-600">
-                {currency}
-              </span>
-            </div>
-          </div>
+          <span className="rounded-md border border-prince-yellow bg-prince-green/20 px-4 py-2 font-bold">
+            {endingQty} units / {endingValue.toFixed(2)} {currency}
+          </span>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

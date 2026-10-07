@@ -6,16 +6,15 @@ import { useReactToPrint } from "react-to-print";
 
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
-import type { SalesHeader, Report } from "../../types";
+import type { SalesHeader } from "../../types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type Props = {
   sales: SalesHeader;
-  report: Report;
 };
 
-export default function PrintSalesHeader({ sales, report }: Props) {
+export default function PrintSalesHeader({ sales }: Props) {
   //Settings
   const settings = useSyncExternalStore(
     subscribeSettings,
@@ -97,7 +96,11 @@ export default function PrintSalesHeader({ sales, report }: Props) {
             <thead>
               <tr>
                 <th style={{ border: "1px solid black", padding: 8 }}>
-                  Product
+                  Product ID
+                </th>
+
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product Name
                 </th>
 
                 <th style={{ border: "1px solid black", padding: 8 }}>
@@ -113,10 +116,13 @@ export default function PrintSalesHeader({ sales, report }: Props) {
             </thead>
 
             <tbody>
-              {report.rows.map((row) => (
+              {sales.rows.map((row) => (
                 <tr key={row.id}>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {report.productName}
+                    {row.productId}
+                  </td>
+                  <td style={{ border: "1px solid black", padding: 8 }}>
+                    {row.productName}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>
@@ -138,7 +144,7 @@ export default function PrintSalesHeader({ sales, report }: Props) {
           <br />
 
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {currency} {report.total.toFixed(2)}
+            Grand Total: {currency} {sales.total.toFixed(2)}
           </h2>
         </div>
       </div>

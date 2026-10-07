@@ -1,47 +1,13 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/libauth";
-import { env } from "@/lib/env";
-import { getLogsClient } from "@/lib/mongodb";
+import { getCurrentSalesLogs } from "@/lib/business-logic-necessities/sales-logs";
 import AdminSalesLogList from "../components/logslist";
-import { AdminSalesLog } from "@/app/admin/types";
 
-export const revalidate = 5; //5 second revalidation.
+export const revalidate = 0;
 
 async function getLogs() {
-  const client = await getLogsClient();
-  // Client check.
-  if (!client) {
-    throw new Error("Database client is null. Connection failed.");
-  }
-  const db = client.db(env.MONGODB_LOGS_DB || "logs");
-  const logsCollection = db.collection("logs");
-
-  const logs = await logsCollection.find().toArray();
-
-  return logs.map((log) => ({
-    ...log,
-    _id: log._id?.toString?.() ?? log._id,
-
-    transactionNumber: log.transactionNumber ?? "",
-
-    periodStart: log.periodStart ?? "",
-    periodEnd: log.periodEnd ?? "",
-
-    beginningRows: Array.isArray(log.beginningRows) ? log.beginningRows : [],
-    additionRows: Array.isArray(log.additionRows) ? log.additionRows : [],
-    endingRows: Array.isArray(log.endingRows) ? log.endingRows : [],
-
-    salesPrices:
-      typeof log.salesPrices === "object" && log.salesPrices !== null
-        ? log.salesPrices
-        : {},
-
-    createdAt:
-      log.createdAt instanceof Date
-        ? log.createdAt.toISOString()
-        : log.createdAt,
-  })) as AdminSalesLog[];
+  return getCurrentSalesLogs();
 }
 
 export const metadata = {

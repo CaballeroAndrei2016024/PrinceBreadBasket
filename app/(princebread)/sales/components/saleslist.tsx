@@ -1,16 +1,15 @@
 "use client";
 import Link from "next/link";
 import PrintSalesHeader from "./printsales";
-import type { SalesHeader, Report } from "../../types";
+import type { SalesHeader } from "../../types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type SalesHeaderListProps = {
   sales: SalesHeader[];
-  reports: Report[];
 };
 
-const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
+const SalesHeaderList = ({ sales }: SalesHeaderListProps) => {
   //Settings.
   const settings = useSyncExternalStore(
     subscribeSettings,
@@ -20,12 +19,6 @@ const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
   const currency = settings.currency || "PHP";
   const grandTotal = sales.reduce((sum, sale) => sum + sale.total, 0);
 
-  //Find reports.
-  const reportsById = new Map(
-    reports
-      .filter((report) => report._id)
-      .map((report) => [String(report._id), report]),
-  );
   return (
     <div className="w-full rounded-xl border border-prince-yellow bg-prince-green-80 p-6 shadow-lg">
       <div className="mb-4 flex-col items-center justify-center">
@@ -54,22 +47,6 @@ const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
             </div>
 
             {sales.map((sale) => {
-              const report = reportsById.get(String(sale.reportId));
-
-              if (!report) {
-                return (
-                  <div
-                    key={sale._id ?? sale.transactionNumber}
-                    className="grid grid-cols-[150px_120px_90px_120px] items-center gap-x-4 border-b px-4 py-3"
-                  >
-                    <span>{sale.customerCode}</span>
-                    <span>{new Date(sale.date).toLocaleDateString()}</span>
-                    <span className="text-red-500">Missing Report</span>
-                    <span>${sale.total.toFixed(2)}</span>
-                  </div>
-                );
-              }
-
               return (
                 <div
                   key={sale._id ?? sale.transactionNumber}
@@ -79,7 +56,7 @@ const SalesHeaderList = ({ sales, reports }: SalesHeaderListProps) => {
 
                   <span>{new Date(sale.date).toLocaleDateString()}</span>
 
-                  <PrintSalesHeader sales={sale} report={report} />
+                  <PrintSalesHeader sales={sale} />
                   <span>
                     {currency} {""}
                     {sale.total.toFixed(2)}

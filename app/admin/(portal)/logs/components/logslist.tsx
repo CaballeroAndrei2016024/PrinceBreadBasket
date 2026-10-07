@@ -1,7 +1,8 @@
 "use client";
+
 import Link from "next/link";
 import AdminPrintSalesLog from "./printlogs";
-import { AdminSalesLog } from "@/app/admin/types";
+import type { AdminSalesLog } from "@/app/admin/types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
@@ -38,7 +39,7 @@ const AdminSalesLogList = ({ logs }: SalesLogListProps) => {
       ) : (
         <div className="flex justify-center">
           <div className="w-full overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-[90px_240px_120px_120px] border-b bg-prince-shadow/50 px-4 py-3 font-semibold">
+            <div className="grid grid-cols-[90px_240px_120px_120px] gap-x-4 border-b bg-prince-shadow/50 px-4 py-3 font-semibold">
               <span>Transaction #</span>
               <span>Period</span>
               <span>Print?</span>
@@ -48,7 +49,7 @@ const AdminSalesLogList = ({ logs }: SalesLogListProps) => {
             {logs.map((log, index) => (
               <div
                 key={log._id ?? log.transactionNumber}
-                className="grid grid-cols-[90px_240px_120px_120px] items-center border-b bg-prince-green/80 px-4 py-3"
+                className="grid grid-cols-[90px_240px_120px_120px] items-center gap-x-4 border-b px-4 py-3 bg-prince-green/80"
               >
                 <span>
                   {prefix}
@@ -60,11 +61,12 @@ const AdminSalesLogList = ({ logs }: SalesLogListProps) => {
                   {new Date(log.periodEnd).toLocaleDateString()}
                 </span>
 
-                <AdminPrintSalesLog log={log} />
+                <div className="flex items-center">
+                  <AdminPrintSalesLog log={log} />
+                </div>
 
                 <Link
-                  href={`/admin/logs/${log.transactionNumber}`}
-                  key={log.transactionNumber}
+                  href={`/admin/logs/${log._id}`}
                   className="rounded-lg border border-prince-yellow bg-white p-4 shadow-sm"
                 >
                   Edit?

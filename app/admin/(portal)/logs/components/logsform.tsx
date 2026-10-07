@@ -1,157 +1,273 @@
 "use client";
 //Main Form component.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { InventoryRow, AdminProductOption } from "./inventory.types";
 import { useRouter } from "next/navigation";
 import AdminInventorySummary from "./inventorysummary";
 import AdminLogsInventorySection from "./inventorysection";
-
-const createEmptyRow = (): InventoryRow => ({
-  id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-  productId: "",
-  qty: 0,
-  price: 0,
-});
+import type { AdminLogInventoryRow, AdminTransaction } from "@/app/admin/types";
+import type { AdminTransactionRow } from "@/app/admin/types";
 
 const AdminSalesLogForm = () => {
+  //Form declarations for different segments.
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
-  const [transactionNumber, setTransactionNumber] = useState("");
-  const [products, setProducts] = useState<AdminProductOption[]>([]);
-  const [beginningRows, setBeginningRows] = useState<InventoryRow[]>([
-    createEmptyRow(),
-  ]);
-  const [additionRows, setAdditionRows] = useState<InventoryRow[]>([
-    createEmptyRow(),
-  ]);
-  const [endingRows, setEndingRows] = useState<InventoryRow[]>([
-    createEmptyRow(),
-  ]);
+
+  //Transaction state.
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
+  const [salesQuantities, setSalesQuantities] = useState<
+    Record<string, number>
+  >({});
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+
+  //Form submission states.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
+  //Code for different rows.
 
-  function syncEndingRows(
-    beginning: InventoryRow[],
-    additions: InventoryRow[],
-  ) {
-    const combined = [...beginning, ...additions];
-
+  const aggregateRows = (
+    sourceTransactions: { rows: AdminTransactionRow[] }[],
+  ): AdminLogInventoryRow[] => {
     const grouped = new Map<
       string,
       {
         productId: string;
-        price: number;
+        productName: string;
+        qty: number;
+        value: number;
       }
     >();
 
-    for (const row of combined) {
-      if (!row.productId) continue;
+    for (const transaction of sourceTransactions) {
+      for (const row of transaction.rows) {
+        const rowValue = row.qty * row.price;
+        const existing = grouped.get(row.productId);
 
-      const key = `${row.productId}-${row.price}`;
-
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          productId: row.productId,
-          price: row.price,
-        });
+        if (existing) {
+          existing.qty += row.qty;
+          existing.value += rowValue;
+        } else {
+          grouped.set(row.productId, {
+            productId: row.productId,
+            productName: row.productName,
+            qty: row.qty,
+            value: rowValue,
+          });
+        }
       }
     }
 
-    setEndingRows((current) => {
-      const currentMap = new Map(
-        current.map((row) => [`${row.productId}-${row.price}`, row]),
-      );
+    return Array.from(grouped.values()).map((row) => ({
+      id: row.productId,
+      productId: row.productId,
+      productName: row.productName,
+      qty: row.qty,
+      price: row.qty > 0 ? row.value / row.qty : 0,
+    }));
+  };
 
-      return Array.from(grouped.values()).map((item) => {
-        const key = `${item.productId}-${item.price}`;
-
-        return (
-          currentMap.get(key) ?? {
-            id: `end-${key}`,
-            productId: item.productId,
-            qty: 0,
-            price: item.price,
-          }
-        );
-      });
-    });
-  }
-
+  //Fetch the transactions based on the period, with a security check.
   useEffect(() => {
-    async function loadProducts() {
+    if (!periodStart || !periodEnd) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadTransactions() {
       try {
-        const response = await fetch("/admin/routes/products", {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          throw new Error("Failed to load product options");
+        setIsLoadingTransactions(true);
+        setErrorMessage(null);
+
+        const transactionsResponse = await fetch(
+          `/routes/transactions?startDate=${encodeURIComponent(
+            periodStart,
+          )}&endDate=${encodeURIComponent(periodEnd)}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        if (!transactionsResponse.ok) {
+          throw new Error("Failed to load transactions.");
         }
 
-        const result = await response.json();
-        const options = (result?.products ?? []).map(
-          (product: AdminProductOption) => ({
-            _id: product._id,
-            productId: product.productId ?? product.productName ?? product._id,
-            productName: product.productName ?? "",
-          }),
-        );
+        const transactionResult = await transactionsResponse.json();
 
-        setProducts(options);
+        setTransactions(
+          Array.isArray(transactionResult?.transactions)
+            ? transactionResult.transactions
+            : [],
+        );
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         console.error(error);
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Failed to load transactions.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingTransactions(false);
+        }
       }
     }
 
-    loadProducts();
-  }, []);
+    loadTransactions();
 
-  const updateBeginningRows = (
-    updater: React.SetStateAction<InventoryRow[]>,
-  ) => {
-    setBeginningRows((current) => {
-      const next = typeof updater === "function" ? updater(current) : updater;
+    return () => controller.abort();
+  }, [periodStart, periodEnd]);
 
-      syncEndingRows(next, additionRows);
+  //Transaction rows syntax.
 
-      return next;
-    });
+  const activeTransactions = useMemo(
+    () => (periodStart && periodEnd ? transactions : []),
+    [periodStart, periodEnd, transactions],
+  );
+
+  const beginningTransactions = useMemo(
+    () =>
+      activeTransactions.filter(
+        (transaction) => transaction.transactionType === "BEGINNING_INVENTORY",
+      ),
+    [activeTransactions],
+  );
+
+  const additionTransactions = useMemo(
+    () =>
+      activeTransactions.filter(
+        (transaction) => transaction.transactionType === "ADDITION",
+      ),
+    [activeTransactions],
+  );
+
+  const beginningRows = useMemo(
+    () => aggregateRows(beginningTransactions),
+    [beginningTransactions],
+  );
+
+  const additionRows = useMemo(
+    () => aggregateRows(additionTransactions),
+    [additionTransactions],
+  );
+
+  const salesInventoryRows = useMemo(
+    () => aggregateRows([...beginningTransactions, ...additionTransactions]),
+    [beginningTransactions, additionTransactions],
+  );
+
+  const salesRows = useMemo(
+    () =>
+      salesInventoryRows.map((row) => ({
+        ...row,
+        qty: salesQuantities[row.productId] ?? 0,
+      })),
+    [salesInventoryRows, salesQuantities],
+  );
+
+  const updateSalesQuantity = (rowId: string, qty: number) => {
+    setSalesQuantities((currentQuantities) => ({
+      ...currentQuantities,
+      [rowId]: qty,
+    }));
   };
 
-  const updateAdditionRows = (
-    updater: React.SetStateAction<InventoryRow[]>,
-  ) => {
-    setAdditionRows((current) => {
-      const next = typeof updater === "function" ? updater(current) : updater;
+  //Ending form calculations.
 
-      syncEndingRows(beginningRows, next);
+  const endingRows = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        productId: string;
+        productName: string;
+        availableQty: number;
+        availableValue: number;
+        endingQty: number;
+      }
+    >();
 
-      return next;
-    });
-  };
+    // Add Beginning Inventory.
+    for (const row of beginningRows) {
+      const existing = grouped.get(row.productId);
+      const rowValue = row.qty * row.price;
 
-  const addBeginningRow = () => {
-    updateBeginningRows((rows) => [...rows, createEmptyRow()]);
-  };
+      if (existing) {
+        existing.availableQty += row.qty;
+        existing.availableValue += rowValue;
+        existing.endingQty += row.qty;
+      } else {
+        grouped.set(row.productId, {
+          productId: row.productId,
+          productName: row.productName,
+          availableQty: row.qty,
+          availableValue: rowValue,
+          endingQty: row.qty,
+        });
+      }
+    }
 
-  const addAdditionRow = () => {
-    updateAdditionRows((rows) => [...rows, createEmptyRow()]);
-  };
+    // Additions increase both available inventory and ending inventory.
+    for (const row of additionRows) {
+      const existing = grouped.get(row.productId);
+      const rowValue = row.qty * row.price;
+
+      if (existing) {
+        existing.availableQty += row.qty;
+        existing.availableValue += rowValue;
+        existing.endingQty += row.qty;
+      } else {
+        grouped.set(row.productId, {
+          productId: row.productId,
+          productName: row.productName,
+          availableQty: row.qty,
+          availableValue: rowValue,
+          endingQty: row.qty,
+        });
+      }
+    }
+
+    // Sales reduce ending quantity.
+    for (const row of salesRows) {
+      const existing = grouped.get(row.productId);
+
+      if (existing) {
+        existing.endingQty -= row.qty;
+      } else {
+        grouped.set(row.productId, {
+          productId: row.productId,
+          productName: row.productName,
+          availableQty: 0,
+          availableValue: 0,
+          endingQty: -row.qty,
+        });
+      }
+    }
+
+    return Array.from(grouped.values()).map((row) => ({
+      id: row.productId,
+      productId: row.productId,
+      productName: row.productName,
+      qty: row.endingQty,
+      price: row.availableQty > 0 ? row.availableValue / row.availableQty : 0,
+    }));
+  }, [beginningRows, additionRows, salesRows]);
+
+  //Syntax for form submission.
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("Submit clicked");
+
     setIsSubmitting(true);
     setMessage(null);
     setErrorMessage(null);
-
-    if (!transactionNumber.trim()) {
-      setErrorMessage("Transaction number is required.");
-      setIsSubmitting(false);
-      return;
-    }
 
     if (!periodStart) {
       setErrorMessage("Period start date is required.");
@@ -171,55 +287,28 @@ const AdminSalesLogForm = () => {
       return;
     }
 
-    const cleanBeginning = beginningRows.filter(
-      (r) => r.productId.trim() !== "",
-    );
-    const cleanAdditions = additionRows.filter(
-      (r) => r.productId.trim() !== "",
-    );
-    const cleanEnding = endingRows.filter((r) => r.productId.trim() !== "");
-
-    console.log({
-      transactionNumber,
-      periodStart,
-      periodEnd,
-      cleanBeginning,
-      cleanAdditions,
-      cleanEnding,
-    });
-
-    if (cleanBeginning.length === 0) {
-      setErrorMessage(
-        "At least one valid Beginning Inventory row is required.",
-      );
+    if (endingRows.some((row) => row.qty < 0)) {
+      setErrorMessage("Ending inventory cannot contain negative quantities.");
       setIsSubmitting(false);
       return;
     }
 
-    const hasNegativeValues = (rows: InventoryRow[]) => {
-      return rows.some((row) => row.qty < 0 || row.price < 0);
-    };
-
-    if (
-      hasNegativeValues(cleanBeginning) ||
-      hasNegativeValues(cleanAdditions) ||
-      hasNegativeValues(cleanEnding)
-    ) {
-      setErrorMessage("Quantities and prices cannot be negative.");
+    if (activeTransactions.length === 0) {
+      setErrorMessage("No transactions were found for the selected period.");
       setIsSubmitting(false);
       return;
     }
 
     const logPayload = {
-      transactionNumber: transactionNumber.trim(),
       periodStart,
       periodEnd,
-      beginningRows: cleanBeginning,
-      additionRows: cleanAdditions,
-      endingRows: cleanEnding,
+      beginningRows,
+      additionRows,
+      salesRows,
+      endingRows,
     };
 
-    console.log("Log payload:", logPayload);
+    console.log("Sales Log payload:", logPayload);
 
     try {
       const response = await fetch("/admin/routes/logs", {
@@ -230,7 +319,8 @@ const AdminSalesLogForm = () => {
         body: JSON.stringify(logPayload),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
+
       console.log("Server response:", result);
 
       if (!response.ok) {
@@ -238,26 +328,27 @@ const AdminSalesLogForm = () => {
           result?.errors && typeof result.errors === "object"
             ? Object.values(result.errors as Record<string, string[]>)
             : [];
+
         const firstError = errorValues[0]?.[0] ?? result?.message;
-        throw new Error(firstError || "Failed to save sales log.");
+
+        throw new Error(
+          firstError || `Failed to save Sales Log (HTTP ${response.status}).`,
+        );
       }
 
-      setMessage(result?.message || "Sales log created successfully.");
+      setMessage(result?.message || "Sales Log created successfully.");
 
-      setTransactionNumber("");
       setPeriodStart("");
       setPeriodEnd("");
-      setBeginningRows([createEmptyRow()]);
-      setAdditionRows([createEmptyRow()]);
-      setEndingRows([createEmptyRow()]);
-
+      setTransactions([]);
       router.push("/admin/logs");
     } catch (error) {
-      console.error("Error during form submission:", error);
+      console.error("Sales Log submission failed:", error);
+
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Something went wrong while saving the sales log.",
+          : "Something went wrong while saving the Sales Log.",
       );
     } finally {
       setIsSubmitting(false);
@@ -336,84 +427,58 @@ const AdminSalesLogForm = () => {
               onChange={(e) => setPeriodEnd(e.target.value)}
               className="border border-prince-yellow rounded-md p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             />
-
-            <label
-              htmlFor="transaction"
-              className="mb-2 mt-3 font-bold text-prince-shadow/50"
-            >
-              Transaction Number:
-            </label>
-            <input
-              type="text"
-              id="transaction"
-              value={transactionNumber}
-              onChange={(e) => setTransactionNumber(e.target.value)}
-              className="border border-prince-yellow rounded-md p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
           </div>
 
           <div className="mt-4 w-full">
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                onClick={addBeginningRow}
-                className="rounded-md bg-prince-green px-3 py-2 text-sm font-semibold text-white hover:bg-prince-orange"
-              >
-                + Add Beginning Row
-              </button>
-            </div>
             <AdminLogsInventorySection
               title="Beginning Inventory"
               rows={beginningRows}
-              setRows={updateBeginningRows}
-              products={products}
             />
           </div>
 
           <div className="mt-4 w-full">
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                onClick={addAdditionRow}
-                className="rounded-md bg-prince-green px-3 py-2 text-sm font-semibold text-white hover:bg-prince-orange"
-              >
-                + Add Addition Row
-              </button>
-            </div>
             <AdminLogsInventorySection
               title="Additions to Inventory"
               rows={additionRows}
-              setRows={updateAdditionRows}
-              products={products}
             />
           </div>
 
           <div className="mt-4 w-full">
             <AdminLogsInventorySection
               title="Sales"
+              rows={salesRows}
+              editable
+              onQuantityChange={updateSalesQuantity}
+            />
+          </div>
+
+          <div className="mt-4 w-full">
+            <AdminLogsInventorySection
+              title="Ending Inventory"
               rows={endingRows}
-              setRows={setEndingRows}
-              products={products}
-              allowProductEdit={false}
             />
           </div>
 
           <AdminInventorySummary
-            products={products}
             beginningRows={beginningRows}
             additionRows={additionRows}
+            salesRows={salesRows}
             endingRows={endingRows}
           />
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingTransactions}
             className="mt-4 rounded-md bg-prince-green px-4 py-2 font-bold text-prince-shadow/50 transition-colors duration-300 hover:bg-prince-orange"
             style={{
               fontFamily: "var(--font-body)",
             }}
           >
-            {isSubmitting ? "SUBMITTING..." : "SUBMIT"}
+            {isSubmitting
+              ? "SUBMITTING..."
+              : isLoadingTransactions
+                ? "LOADING..."
+                : "SUBMIT SALES LOG"}
           </Button>
         </form>
       </main>

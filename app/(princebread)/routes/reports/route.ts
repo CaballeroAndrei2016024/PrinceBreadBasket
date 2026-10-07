@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
+import { getCurrentSalesHeaderByTransactionNumber } from "@/lib/business-logic-necessities/sales-headers";
 import { ReportSchema } from "@/lib/validators/reports";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ interface ReportsDocument {
   [key: string]: unknown;
 }
 
+//GET- Fetches a report from the database.
 export async function GET() {
   try {
     const client = await getReportsClient();
@@ -65,10 +67,43 @@ export async function GET() {
   }
 }
 
+//POST- Adds a report to the database.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validationResult = ReportSchema.safeParse(body);
+
+    const client = await getReportsClient();
+
+    if (!client) {
+      throw new Error("Database client is null. Connection failed.");
+    }
+
+    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
+    const reportsCollection = db.collection("reports");
+
+    const salesHeader = await getCurrentSalesHeaderByTransactionNumber(
+      String(body?.transactionNumber ?? "").trim(),
+    );
+
+    if (!salesHeader) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Sales Header not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const reportInput = {
+      transactionNumber: salesHeader.transactionNumber,
+      periodStart: String(body?.periodStart ?? "").trim(),
+      periodEnd: String(body?.periodEnd ?? "").trim(),
+      rows: salesHeader.rows,
+      total: salesHeader.total,
+    };
+
+    const validationResult = ReportSchema.safeParse(reportInput);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -80,9 +115,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
     const report = validationResult.data;
 
-    const client = await getReportsClient();
     // Check what URI/DB is running.
     try {
       console.log("MONGODB_REPORTS_URI=", env.MONGODB_REPORTS_URI);
@@ -90,14 +125,6 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.error("Failed to log env vars for MongoDB", e);
     }
-
-    // Client check.
-    if (!client) {
-      throw new Error("Database client is null. Connection failed.");
-    }
-
-    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-    const reportsCollection = db.collection("reports");
 
     const insertedReport = await reportsCollection.insertOne({
       ...report,

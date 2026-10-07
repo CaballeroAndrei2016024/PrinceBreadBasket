@@ -3,6 +3,7 @@ import ReportDetail from "../components/reportdetails";
 import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { AdminTransactionRow } from "@/app/admin/types";
 
 type PageProps = {
   params: Promise<{
@@ -12,23 +13,39 @@ type PageProps = {
 
 //The report info as shown by the admin module.
 type ReportRecord = {
-  _id: ObjectId;
+  _id: string;
   transactionNumber: string;
-  productId: string;
-  productName: string;
-  productPrice: number;
-  periodStart: string | Date;
-  periodEnd: string | Date;
+  periodStart: string;
+  periodEnd: string;
   total: number;
-  rows: {
-    id: string;
-    date: string;
-    qty: number;
-    price: number;
-  }[];
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
+  rows: AdminTransactionRow[];
+  createdAt?: string;
+  updatedAt?: string;
 };
+
+//Serialize dates.
+
+function serializeDate(value: string | Date | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.toISOString();
+}
+
+function serializePeriodDate(value: string | Date | undefined): string {
+  const serialized = serializeDate(value);
+
+  if (!serialized) {
+    return "";
+  }
+
+  return serialized.includes("T") ? serialized.split("T")[0] : serialized;
+}
 
 //Find a report by its transactionId.
 async function getReportByTransactionNumber(transactionNumber: string) {
@@ -49,41 +66,14 @@ async function getReportByTransactionNumber(transactionNumber: string) {
 
   //Find the page indicated by the report variables.
   return {
-    ...report,
-    _id:
-      typeof report._id === "object" &&
-      report._id !== null &&
-      "toString" in report._id &&
-      typeof report._id.toString === "function"
-        ? report._id.toString()
-        : String(report._id),
-
-    transactionNumber: report.transactionNumber ?? "",
-    productId: report.productId ?? "",
-    productName: report.productName ?? "",
-
-    productPrice:
-      typeof report.productPrice === "number" ? report.productPrice : 0,
-
-    periodStart:
-      report.periodStart instanceof Date
-        ? report.periodStart.toISOString().split("T")[0]
-        : (report.periodStart ?? ""),
-
-    periodEnd:
-      report.periodEnd instanceof Date
-        ? report.periodEnd.toISOString().split("T")[0]
-        : (report.periodEnd ?? ""),
-
-    createdAt:
-      report.createdAt instanceof Date
-        ? report.createdAt.toISOString()
-        : (report.createdAt ?? ""),
-
-    updatedAt:
-      report.updatedAt instanceof Date
-        ? report.updatedAt.toISOString()
-        : (report.updatedAt ?? ""),
+    _id: report._id.toString(),
+    transactionNumber: report.transactionNumber,
+    periodStart: serializePeriodDate(report.periodStart),
+    periodEnd: serializePeriodDate(report.periodEnd),
+    rows: Array.isArray(report.rows) ? report.rows : [],
+    total: typeof report.total === "number" ? report.total : 0,
+    createdAt: serializeDate(report.createdAt),
+    updatedAt: serializeDate(report.updatedAt),
   };
 }
 
@@ -95,19 +85,5 @@ export default async function ReportPage({ params }: PageProps) {
     notFound();
   }
 
-  return (
-    <ReportDetail
-      _id={report._id}
-      transactionNumber={report.transactionNumber}
-      productId={report.productId}
-      productName={report.productName}
-      productPrice={report.productPrice}
-      periodStart={report.periodStart}
-      periodEnd={report.periodEnd}
-      total={report.total}
-      rows={report.rows}
-      createdAt={report.createdAt}
-      updatedAt={report.updatedAt}
-    />
-  );
+  return <ReportDetail report={report} />;
 }

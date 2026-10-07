@@ -23,6 +23,8 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
   );
   const currency = settings.currency || "PHP";
   const prefix = settings.receiptPrefix || "PB-";
+
+  //Functionalities for printing.
   const [hover, setHover] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,8 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
       <div
         style={{
           display: "none",
+          overflow: "hidden",
+          height: 0,
           fontFamily: "var(--font-body)",
         }}
       >
@@ -69,8 +73,8 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
           <hr />
 
           <p>
-            <strong>Transaction Number:</strong>
-            {prefix} {sales.transactionNumber}
+            <strong>Transaction Number:</strong> {prefix}
+            {sales.transactionNumber}
           </p>
 
           <p>
@@ -92,7 +96,11 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
             <thead>
               <tr>
                 <th style={{ border: "1px solid black", padding: 8 }}>
-                  Product
+                  Product ID
+                </th>
+
+                <th style={{ border: "1px solid black", padding: 8 }}>
+                  Product Name
                 </th>
 
                 <th style={{ border: "1px solid black", padding: 8 }}>
@@ -111,7 +119,10 @@ export default function AdminPrintSalesHeader({ sales }: Props) {
               {sales.rows.map((row) => (
                 <tr key={row.id}>
                   <td style={{ border: "1px solid black", padding: 8 }}>
-                    {sales.productName}
+                    {row.productId}
+                  </td>
+                  <td style={{ border: "1px solid black", padding: 8 }}>
+                    {row.productName}
                   </td>
 
                   <td style={{ border: "1px solid black", padding: 8 }}>

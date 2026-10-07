@@ -6,6 +6,7 @@ const NavBarItems = [
   { name: "Home", href: "/", icon: "/newhome.png" },
   { name: "Products", href: "/products", icon: "/newproducts.png" },
   { name: "Customers", href: "/customers", icon: "/customers.png" },
+  { name: "Transactions", href: "/transactions", icon: "/transactions.png" },
   { name: "Sales", href: "/sales", icon: "/newsales.png" },
   { name: "Reports", href: "/reports", icon: "/newreports.png" },
   { name: "Logs", href: "/logs", icon: "/newlogs.png" },

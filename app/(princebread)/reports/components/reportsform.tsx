@@ -5,18 +5,21 @@ import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
-type ProductOption = {
-  _id: string;
-  productId?: string;
-  productName: string;
-  productPrice: number;
-};
-
-type TransactionRow = {
+type ReportRow = {
   id: string;
-  date: string;
+  productId: string;
+  productName: string;
   qty: number;
   price: number;
+};
+
+type TransactionOption = {
+  _id: string;
+  transactionNumber: string;
+  customerCode: string;
+  date: string;
+  rows: ReportRow[];
+  total: number;
 };
 
 const SalesReportForm = () => {
@@ -29,18 +32,12 @@ const SalesReportForm = () => {
   const currency = settings.currency || "PHP";
 
   // Form header fields
-  const [selectedProductId, setSelectedProductId] = useState("");
-  const [transactionNumber, setTransactionNumber] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
 
-  // Product selection
-  const [products, setProducts] = useState<ProductOption[]>([]);
-
-  // Transaction rows
-  const [rows, setRows] = useState<TransactionRow[]>([
-    { id: "row-1", date: "", qty: 0, price: 0 },
-  ]);
+  //Transaction selection.
+  const [transactions, setTransactions] = useState<TransactionOption[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState("");
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,20 +45,63 @@ const SalesReportForm = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
-  const selectedProduct = useMemo(
-    () => products.find((product) => product.productId === selectedProductId),
-    [products, selectedProductId],
+  //Function to find selected Transactions.
+
+  const selectedTransactionData = useMemo(
+    () =>
+      transactions.find(
+        (transaction) => transaction.transactionNumber === selectedTransaction,
+      ),
+    [transactions, selectedTransaction],
   );
 
-  const displayRows = rows.map((row) => ({
-    ...row,
-    price: row.price === 0 ? (selectedProduct?.productPrice ?? 0) : row.price,
-  }));
+  const displayRows = selectedTransactionData?.rows ?? [];
 
-  const grandTotal = displayRows.reduce(
-    (sum, row) => sum + row.qty * row.price,
-    0,
-  );
+  const grandTotal = selectedTransactionData?.total ?? 0;
+
+  //Loading transactions from the database...
+
+  useEffect(() => {
+    async function loadTransactions() {
+      try {
+        const response = await fetch("/routes/sales", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load Sales Header options.");
+        }
+
+        const result = await response.json();
+
+        const options = Array.isArray(result?.sales)
+          ? result.sales.map(
+              (salesHeader: {
+                _id?: string;
+                transactionNumber?: string;
+                customerCode?: string;
+                date?: string;
+                rows?: ReportRow[];
+                total?: number;
+              }) => ({
+                _id: salesHeader._id ?? "",
+                transactionNumber: salesHeader.transactionNumber ?? "",
+                customerCode: salesHeader.customerCode ?? "",
+                date: salesHeader.date ?? "",
+                rows: Array.isArray(salesHeader.rows) ? salesHeader.rows : [],
+                total: Number(salesHeader.total ?? 0),
+              }),
+            )
+          : [];
+
+        setTransactions(options);
+      } catch (error) {
+        console.error("Failed to load transactions:", error);
+      }
+    }
+
+    loadTransactions();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,14 +109,22 @@ const SalesReportForm = () => {
     setMessage(null);
     setErrorMessage(null);
 
-    if (!selectedProduct) {
-      setErrorMessage("Please select a product before submitting the report.");
+    if (!selectedTransaction) {
+      setErrorMessage("Please select a sales transaction.");
       setIsSubmitting(false);
       return;
     }
 
-    if (!transactionNumber.trim()) {
-      setErrorMessage("Transaction number is required.");
+    const transaction = selectedTransactionData;
+
+    if (!transaction) {
+      setErrorMessage("Selected sales transaction could not be found.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!transaction.rows.length) {
+      setErrorMessage("The selected sales transaction has no items.");
       setIsSubmitting(false);
       return;
     }
@@ -99,33 +147,10 @@ const SalesReportForm = () => {
       return;
     }
 
-    if (rows.length === 0) {
-      setErrorMessage("At least one transaction row is required.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (rows.some((row) => row.date.trim() === "")) {
-      setErrorMessage("All transaction rows must include a date.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (rows.some((row) => row.qty <= 0)) {
-      setErrorMessage("Quantity must be greater than zero for each row.");
-      setIsSubmitting(false);
-      return;
-    }
-
     const reportPayload = {
-      productId: selectedProduct.productId ?? selectedProduct._id,
-      productName: selectedProduct.productName,
-      productPrice: selectedProduct.productPrice,
-      transactionNumber: transactionNumber.trim(),
+      transactionNumber: transaction.transactionNumber,
       periodStart,
       periodEnd,
-      rows: displayRows,
-      total: grandTotal,
     };
 
     console.log("Report payload:", reportPayload);
@@ -152,8 +177,7 @@ const SalesReportForm = () => {
       }
 
       setMessage(result?.message || "Report created successfully.");
-      setRows([{ id: "row-1", date: "", qty: 0, price: 0 }]);
-      setTransactionNumber("");
+      setSelectedTransaction("");
       setPeriodStart("");
       setPeriodEnd("");
       router.push("/reports");
@@ -167,66 +191,6 @@ const SalesReportForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Load products from database
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        const response = await fetch("/routes/products", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error("Failed to load product options");
-        }
-        const result = await response.json();
-        const options = (result?.products ?? []).map(
-          (product: ProductOption) => ({
-            _id: product._id,
-            productId: product.productId ?? product.productName ?? product._id,
-            productName: product.productName ?? "",
-            productPrice:
-              typeof product.productPrice === "number"
-                ? product.productPrice
-                : Number(product.productPrice) || 0,
-          }),
-        );
-        setProducts(options);
-        if (options.length > 0) {
-          setSelectedProductId(options[0].productId ?? "");
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    loadProducts();
-  }, []);
-
-  // Row management functions
-  const addRow = () => {
-    setRows((currentRows) => [
-      ...currentRows,
-      {
-        id: `row-${currentRows.length + 1}`,
-        date: "",
-        qty: 0,
-        price: selectedProduct?.productPrice ?? 0,
-      },
-    ]);
-  };
-
-  const updateRow = (rowId: string, changes: Partial<TransactionRow>) => {
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === rowId ? { ...row, ...changes } : row,
-      ),
-    );
-  };
-
-  const removeRow = (rowId: string) => {
-    setRows((currentRows) =>
-      currentRows.length > 1
-        ? currentRows.filter((row) => row.id !== rowId)
-        : currentRows,
-    );
   };
 
   return (
@@ -253,67 +217,100 @@ const SalesReportForm = () => {
             }}
           >
             <label
-              htmlFor="product-id"
+              htmlFor="sales-transaction"
               className="mb-2 font-semibold text-prince-shadow/50"
             >
-              Product Code:
+              Sales Header:
             </label>
+
             <select
-              id="product-id"
-              name="productId"
-              value={selectedProductId}
-              onChange={(e) => setSelectedProductId(e.target.value)}
+              id="sales-transaction"
+              value={selectedTransaction}
+              onChange={(e) => setSelectedTransaction(e.target.value)}
               className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             >
-              {products.map((product) => (
+              <option value="">Select a Sales Header</option>
+
+              {transactions.map((transaction) => (
                 <option
-                  key={product._id}
-                  value={product.productId ?? product._id}
+                  key={transaction.transactionNumber}
+                  value={transaction.transactionNumber}
                 >
-                  {product.productId} - {product.productName}
+                  {transaction.transactionNumber} - {transaction.date} -{" "}
+                  {transaction.customerCode}
                 </option>
               ))}
             </select>
             <label
-              htmlFor="transaction"
-              className="mt-4 mb-2 font-semibold text-prince-shadow/50"
+              htmlFor="transaction-number"
+              className="mb-2 mt-3 font-semibold text-prince-shadow/50"
             >
               Transaction Number:
             </label>
+
             <input
+              id="transaction-number"
               type="text"
-              id="transaction"
-              value={transactionNumber}
-              onChange={(e) => setTransactionNumber(e.target.value)}
-              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
-            <label
-              htmlFor="datefrom"
-              className="mt-4 mb-2 font-semibold text-prince-shadow/50"
-            >
-              Period Start:
-            </label>
-            <input
-              type="date"
-              id="datefrom"
-              value={periodStart}
-              onChange={(e) => setPeriodStart(e.target.value)}
-              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
-            />
-            <label
-              htmlFor="dateto"
-              className="mt-4 mb-2 font-semibold text-prince-shadow/50"
-            >
-              Period End:
-            </label>
-            <input
-              type="date"
-              id="dateto"
-              value={periodEnd}
-              onChange={(e) => setPeriodEnd(e.target.value)}
-              className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+              value={selectedTransactionData?.transactionNumber ?? ""}
+              readOnly
+              className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700"
             />
           </div>
+          <label
+            htmlFor="datefrom"
+            className="mt-4 mb-2 font-semibold text-prince-shadow/50"
+          >
+            Period Start:
+          </label>
+          <input
+            type="date"
+            id="datefrom"
+            value={periodStart}
+            onChange={(e) => setPeriodStart(e.target.value)}
+            className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+          />
+          <label
+            htmlFor="dateto"
+            className="mt-4 mb-2 font-semibold text-prince-shadow/50"
+          >
+            Period End:
+          </label>
+          <input
+            type="date"
+            id="dateto"
+            value={periodEnd}
+            onChange={(e) => setPeriodEnd(e.target.value)}
+            className="rounded-md border border-prince-yellow p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+          />
+          <label
+            htmlFor="customer-code"
+            className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+          >
+            Customer Code:
+          </label>
+
+          <input
+            id="customer-code"
+            type="text"
+            value={selectedTransactionData?.customerCode ?? ""}
+            readOnly
+            className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700"
+          />
+
+          <label
+            htmlFor="sales-date"
+            className="mb-2 mt-3 font-semibold text-prince-shadow/50"
+          >
+            Sales Date:
+          </label>
+
+          <input
+            id="sales-date"
+            type="date"
+            value={selectedTransactionData?.date ?? ""}
+            readOnly
+            className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700"
+          />
 
           {/* Transaction Items */}
           <div className="mt-4 w-full rounded-lg border border-prince-yellow bg-prince-yellow/20 p-4">
@@ -326,17 +323,6 @@ const SalesReportForm = () => {
               >
                 Transaction Items
               </h2>
-
-              <button
-                type="button"
-                onClick={addRow}
-                className="rounded-md bg-prince-green px-4 py-2 text-sm font-semibold text-white hover:bg-prince-orange transition-colors"
-                style={{
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                + Add Item
-              </button>
             </div>
 
             <div
@@ -349,23 +335,23 @@ const SalesReportForm = () => {
                 <thead>
                   <tr className="bg-prince-green text-white">
                     <th className="border border-prince-yellow p-2 text-left">
-                      Trans. Date
+                      Product ID
+                    </th>
+
+                    <th className="border border-prince-yellow p-2 text-left">
+                      Product Name
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-28">
-                      Product Qty
+                      Qty
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
-                      Product Price ({currency})
+                      Unit Price ({currency})
                     </th>
 
                     <th className="border border-prince-yellow p-2 text-center w-32">
                       Total ({currency})
-                    </th>
-
-                    <th className="border border-prince-yellow p-2 text-center w-24">
-                      Action
                     </th>
                   </tr>
                 </thead>
@@ -374,65 +360,23 @@ const SalesReportForm = () => {
                   {displayRows.map((row) => (
                     <tr key={row.id} className="hover:bg-prince-yellow/10">
                       <td className="border border-prince-yellow p-2">
-                        <input
-                          type="date"
-                          value={row.date}
-                          onChange={(e) =>
-                            updateRow(row.id, { date: e.target.value })
-                          }
-                          className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
-                        />
+                        {row.productId}
                       </td>
 
                       <td className="border border-prince-yellow p-2">
-                        <input
-                          type="number"
-                          value={row.qty}
-                          min={0}
-                          onChange={(e) =>
-                            updateRow(row.id, {
-                              qty: Number(e.target.value),
-                            })
-                          }
-                          className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
-                        />
-                      </td>
-
-                      <td className="border border-prince-yellow p-2">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={row.price}
-                            onChange={(e) =>
-                              updateRow(row.id, {
-                                price: Number(e.target.value),
-                              })
-                            }
-                            className="w-full rounded-md border border-gray-300 p-1 text-center text-slate-700"
-                          />
-
-                          <span className="text-xs font-semibold text-slate-600">
-                            {currency}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="border border-prince-yellow p-2 text-center font-semibold">
-                        {row.qty * row.price > 0
-                          ? `${(row.qty * row.price).toFixed(2)} ${currency}`
-                          : `0.00 ${currency}`}
+                        {row.productName}
                       </td>
 
                       <td className="border border-prince-yellow p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(row.id)}
-                          className="rounded-md bg-prince-red px-2 py-1 text-xs font-semibold text-white hover:bg-red-600"
-                        >
-                          Remove
-                        </button>
+                        {row.qty}
+                      </td>
+
+                      <td className="border border-prince-yellow p-2 text-center">
+                        {row.price.toFixed(2)} {currency}
+                      </td>
+
+                      <td className="border border-prince-yellow p-2 text-center font-semibold">
+                        {(row.qty * row.price).toFixed(2)} {currency}
                       </td>
                     </tr>
                   ))}
@@ -453,7 +397,7 @@ const SalesReportForm = () => {
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Submission States */}
           {errorMessage && (
             <div
               className="mt-4 w-full rounded-md bg-red-100 border border-red-500 p-3 text-red-700"
@@ -465,7 +409,6 @@ const SalesReportForm = () => {
             </div>
           )}
 
-          {/* Success Message */}
           {message && (
             <div
               className="mt-4 w-full rounded-md bg-green-100 border border-green-500 p-3 text-green-700"
@@ -477,7 +420,7 @@ const SalesReportForm = () => {
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Submit */}
           <Button
             type="submit"
             disabled={isSubmitting}

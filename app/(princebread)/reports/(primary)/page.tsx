@@ -9,7 +9,11 @@ import type { Report } from "../../types";
 export const revalidate = 5; //5 second revalidation.
 
 async function getReports() {
+  //Client check.
   const client = await getReportsClient();
+  if (!client) {
+    throw new Error("Database client is null. Connection failed.");
+  }
   const db = client.db(env.MONGODB_REPORTS_DB || "reports");
   const reportsCollection = db.collection("reports");
 

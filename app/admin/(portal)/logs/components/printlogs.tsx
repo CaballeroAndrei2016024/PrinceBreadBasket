@@ -2,85 +2,87 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { useSyncExternalStore } from "react";
 import { useReactToPrint } from "react-to-print";
 
 import printIcon from "@/public/print.png";
 import printHoverIcon from "@/public/printhover.png";
-import { AdminSalesLog } from "@/app/admin/types";
-import { InventoryRow, AdminProductOption } from "./inventory.types";
+import type { AdminSalesLog, AdminLogInventoryRow } from "@/app/admin/types";
+import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
 type Props = {
   log: AdminSalesLog;
-  products?: AdminProductOption[];
 };
 
+//Summary Row types for Sales.
 type SummaryRow = {
   productId: string;
   productName: string;
-  price: number;
   qty: number;
+  value: number;
+  averagePrice: number;
 };
 
 function formatCurrency(value: number, currency: string) {
   return `${currency} ${value.toFixed(2)}`;
 }
 
-function buildSummaryRows(
-  beginningRows: InventoryRow[],
-  additionRows: InventoryRow[],
-  endingRows: InventoryRow[],
-  products: AdminProductOption[] = [],
-) {
-  const grouped = new Map<string, SummaryRow>();
+//How to configure the total cost for each section of the Logs.
+
+function getRowTotal(row: AdminLogInventoryRow) {
+  return row.qty * row.price;
+}
+
+function buildTotalAvailableRows(
+  beginningRows: AdminLogInventoryRow[],
+  additionRows: AdminLogInventoryRow[],
+): SummaryRow[] {
+  const grouped = new Map<
+    string,
+    {
+      productId: string;
+      productName: string;
+      qty: number;
+      value: number;
+    }
+  >();
 
   for (const row of [...beginningRows, ...additionRows]) {
-    if (!row.productId) continue;
+    const existing = grouped.get(row.productId);
 
-    const product = products.find((item) => item.productId === row.productId);
-    const productName = product?.productName ?? row.productId;
-    const key = `${row.productId}-${row.price}`;
-
-    if (grouped.has(key)) {
-      grouped.get(key)!.qty += row.qty;
+    if (existing) {
+      existing.qty += row.qty;
+      existing.value += getRowTotal(row);
     } else {
-      grouped.set(key, {
+      grouped.set(row.productId, {
         productId: row.productId,
-        productName,
-        price: row.price,
+        productName: row.productName,
         qty: row.qty,
+        value: getRowTotal(row),
       });
     }
   }
 
-  const totalAvailable = Array.from(grouped.values());
-
-  const sales = totalAvailable.map((row) => {
-    const endingQty = endingRows
-      .filter(
-        (item) => item.productId === row.productId && item.price === row.price,
-      )
-      .reduce((sum, item) => sum + item.qty, 0);
-
-    return {
-      ...row,
-      qty: row.qty - endingQty,
-    };
-  });
-
-  return { totalAvailable, sales };
+  return Array.from(grouped.values()).map((row) => ({
+    ...row,
+    averagePrice: row.qty > 0 ? row.value / row.qty : 0,
+  }));
 }
 
 function InventoryTable({
   title,
   rows,
-  currency,
 }: {
   title: string;
-  rows: InventoryRow[];
-  currency: string;
+  rows: AdminLogInventoryRow[];
 }) {
+  //Settings.
+  const settings = useSyncExternalStore(
+    subscribeSettings,
+    getSettings,
+    getSettings,
+  );
+  const currency = settings.currency || "PHP";
   const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
 
   return (
@@ -90,6 +92,7 @@ function InventoryTable({
       <table
         style={{
           width: "100%",
+          minWidth: "640px",
           borderCollapse: "collapse",
         }}
       >
@@ -98,10 +101,17 @@ function InventoryTable({
             <th style={{ border: "1px solid black", padding: 8 }}>
               Product ID
             </th>
+
+            <th style={{ border: "1px solid black", padding: 8 }}>
+              Product Name
+            </th>
+
             <th style={{ border: "1px solid black", padding: 8 }}>Quantity</th>
+
             <th style={{ border: "1px solid black", padding: 8 }}>
               Unit Price
             </th>
+
             <th style={{ border: "1px solid black", padding: 8 }}>Total</th>
           </tr>
         </thead>
@@ -110,7 +120,7 @@ function InventoryTable({
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={4}
+                colSpan={5}
                 style={{
                   border: "1px solid black",
                   padding: 8,
@@ -127,13 +137,31 @@ function InventoryTable({
                   {row.productId}
                 </td>
                 <td style={{ border: "1px solid black", padding: 8 }}>
+                  {row.productName}
+                </td>
+
+                <td style={{ border: "1px solid black", padding: 8 }}>
                   {row.qty}
                 </td>
-                <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.price, currency)}
+
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: 8,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {currency} {row.price.toFixed(2)}
                 </td>
-                <td style={{ border: "1px solid black", padding: 8 }}>
-                  {formatCurrency(row.qty * row.price, currency)}
+
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: 8,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {currency} {(row.qty * row.price).toFixed(2)}
                 </td>
               </tr>
             ))
@@ -142,26 +170,28 @@ function InventoryTable({
       </table>
 
       <p style={{ textAlign: "right", marginTop: "8px" }}>
-        <strong>Section Total:</strong> {formatCurrency(total, currency)}
+        <strong>Section Total:</strong>
+        {formatCurrency(total, currency)}
       </p>
     </div>
   );
 }
 
-export default function AdminPrintSalesLog({ log, products = [] }: Props) {
-  //Settings
+export default function AdminPrintSalesLog({ log }: Props) {
+  //Settings.
   const settings = useSyncExternalStore(
     subscribeSettings,
     getSettings,
     getSettings,
   );
   const currency = settings.currency || "PHP";
+  //Functionalities for printing.
   const [hover, setHover] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Sales-Log-${log.transactionNumber || "untitled"}`,
+    documentTitle: `Sales-Log-${log.periodStart}-${log.periodEnd}`,
   });
 
   const beginningTotal = log.beginningRows.reduce(
@@ -172,25 +202,24 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
     (sum, row) => sum + row.qty * row.price,
     0,
   );
+
+  const salesTotal = log.salesRows.reduce(
+    (sum, row) => sum + row.qty * row.price,
+    0,
+  );
+
   const endingTotal = log.endingRows.reduce(
     (sum, row) => sum + row.qty * row.price,
     0,
   );
 
-  const { totalAvailable, sales } = buildSummaryRows(
+  const totalAvailableRows = buildTotalAvailableRows(
     log.beginningRows,
     log.additionRows,
-    log.endingRows,
-    products,
   );
 
-  const totalAvailableGrandTotal = totalAvailable.reduce(
-    (sum, row) => sum + row.qty * row.price,
-    0,
-  );
-
-  const salesGrandTotal = sales.reduce(
-    (sum, row) => sum + row.qty * row.price,
+  const totalAvailableGrandTotal = totalAvailableRows.reduce(
+    (sum, row) => sum + row.value,
     0,
   );
 
@@ -202,7 +231,7 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         aria-label="Print Sales Log"
-        className="rounded-lg p-2 transition-colors duration-200 hover:bg-gray-200"
+        className="shrink-0 rounded-lg p-2 transition-colors duration-200 hover:bg-gray-200"
       >
         <Image
           src={hover ? printHoverIcon : printIcon}
@@ -214,7 +243,8 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
 
       <div
         style={{
-          display: "none",
+          overflow: "hidden",
+          height: 0,
           fontFamily: "var(--font-body)",
         }}
       >
@@ -229,10 +259,6 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
           <h1>Sales Log</h1>
 
           <hr />
-
-          <p>
-            <strong>Transaction Number:</strong> {log.transactionNumber}
-          </p>
 
           <p>
             <strong>Period:</strong>{" "}
@@ -250,27 +276,28 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
           <InventoryTable
             title="Beginning Inventory"
             rows={log.beginningRows}
-            currency={currency}
           />
-          <InventoryTable
-            title="Additions"
-            rows={log.additionRows}
-            currency={currency}
-          />
-          <InventoryTable
-            title="Ending Inventory"
-            rows={log.endingRows}
-            currency={currency}
-          />
+
+          <InventoryTable title="Additions" rows={log.additionRows} />
+
+          <InventoryTable title="Sales" rows={log.salesRows} />
+
+          <InventoryTable title="Ending Inventory" rows={log.endingRows} />
 
           <br />
 
           <h2 style={{ textAlign: "right" }}>
             Beginning Total: {formatCurrency(beginningTotal, currency)}
           </h2>
+
           <h2 style={{ textAlign: "right" }}>
             Additions Total: {formatCurrency(additionTotal, currency)}
           </h2>
+
+          <h2 style={{ textAlign: "right" }}>
+            Sales Total: {formatCurrency(salesTotal, currency)}
+          </h2>
+
           <h2 style={{ textAlign: "right" }}>
             Ending Total: {formatCurrency(endingTotal, currency)}
           </h2>
@@ -278,6 +305,7 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
           <br />
 
           <h2>Total Available for Sales</h2>
+
           <table
             style={{
               width: "100%",
@@ -294,93 +322,78 @@ export default function AdminPrintSalesLog({ log, products = [] }: Props) {
                 <th style={{ border: "1px solid black", padding: 8 }}>
                   Product Name
                 </th>
+
                 <th style={{ border: "1px solid black", padding: 8 }}>
                   Quantity
                 </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>
-                  Unit Price
+
+                <th
+                  style={{
+                    border: "1px solid black",
+                    padding: 8,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Average Unit Price
                 </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>Total</th>
+
+                <th
+                  style={{
+                    border: "1px solid black",
+                    padding: 8,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Total
+                </th>
               </tr>
             </thead>
+
             <tbody>
-              {totalAvailable.map((row) => (
-                <tr key={`${row.productId}-${row.price}`}>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.productId}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.productName}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.qty}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price, currency)}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price, currency)}
+              {totalAvailableRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{
+                      border: "1px solid black",
+                      padding: 8,
+                      textAlign: "center",
+                    }}
+                  >
+                    No entries
                   </td>
                 </tr>
-              ))}
+              ) : (
+                totalAvailableRows.map((row) => (
+                  <tr key={row.productId}>
+                    <td style={{ border: "1px solid black", padding: 8 }}>
+                      {row.productId}
+                    </td>
+
+                    <td style={{ border: "1px solid black", padding: 8 }}>
+                      {row.productName}
+                    </td>
+
+                    <td style={{ border: "1px solid black", padding: 8 }}>
+                      {row.qty}
+                    </td>
+
+                    <td style={{ border: "1px solid black", padding: 8 }}>
+                      {currency} {row.averagePrice.toFixed(2)}
+                    </td>
+
+                    <td style={{ border: "1px solid black", padding: 8 }}>
+                      {currency} {row.value.toFixed(2)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-          <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(totalAvailableGrandTotal, currency)}
-          </h2>
 
-          <br />
-
-          <h2>Sales</h2>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              marginTop: "8px",
-              marginBottom: "16px",
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={{ border: "1px solid black", padding: 8 }}>
-                  Product ID
-                </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>
-                  Product Name
-                </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>
-                  Quantity
-                </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>
-                  Unit Price
-                </th>
-                <th style={{ border: "1px solid black", padding: 8 }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((row) => (
-                <tr key={`${row.productId}-${row.price}`}>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.productId}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.productName}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {row.qty}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.price, currency)}
-                  </td>
-                  <td style={{ border: "1px solid black", padding: 8 }}>
-                    {formatCurrency(row.qty * row.price, currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
           <h2 style={{ textAlign: "right" }}>
-            Grand Total: {formatCurrency(salesGrandTotal, currency)}
+            Total Available Value: {currency}{" "}
+            {totalAvailableGrandTotal.toFixed(2)}
           </h2>
         </div>
       </div>

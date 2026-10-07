@@ -1,90 +1,56 @@
+//Mandatory imports.
+
 "use client";
 
-//Mandatory Imports and "use client"
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminReportTransactionRow } from "../../../types";
+import type { AdminReport } from "@/app/admin/types";
 import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
-//Type and Interface required for Report Details.
+type Props = {
+  report: AdminReport;
+};
 
-interface ReportDetailProps {
-  _id: string;
-  transactionNumber: string;
-  productId: string;
-  productName: string;
-  productPrice: number;
-  periodStart: string;
-  periodEnd: string;
-  total: number;
-  rows: AdminReportTransactionRow[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-function ReportDetail(props: ReportDetailProps) {
-  //Settings
+function ReportDetail({ report }: Props) {
+  // Settings
   const settings = useSyncExternalStore(
     subscribeSettings,
     getSettings,
     getSettings,
   );
+
   const currency = settings.currency || "PHP";
   const prefix = settings.receiptPrefix || "PB-";
 
-  //Report Details.
+  // Report state
   const [isEditing, setIsEditing] = useState(false);
-  const [productId, setProductId] = useState(props.productId);
-  const [productName, setProductName] = useState(props.productName);
-  const [productPrice, setProductPrice] = useState(
-    props.productPrice.toString(),
-  );
-  const [periodStart, setPeriodStart] = useState(props.periodStart);
-  const [periodEnd, setPeriodEnd] = useState(props.periodEnd);
-  const [rows, setRows] = useState(props.rows);
-  //Form States.
+  const [periodStart, setPeriodStart] = useState(report.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(report.periodEnd);
+
+  // Request states
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
+  const router = useRouter();
 
-  // Row management functions
-  const addRow = () => {
-    setRows((currentRows) => [
-      ...currentRows,
-      {
-        id: `row-${Date.now()}-${currentRows.length}`,
-        date: "",
-        qty: 0,
-        price: Number(productPrice) || 0,
-      },
-    ]);
+  // Editing state functions
+  const handleStartEdit = () => {
+    setMessage(null);
+    setErrorMessage(null);
+    setIsEditing(true);
   };
 
-  const updateRow = (
-    rowId: string,
-    changes: Partial<AdminReportTransactionRow>,
-  ) => {
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === rowId ? { ...row, ...changes } : row,
-      ),
-    );
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setPeriodStart(report.periodStart);
+    setPeriodEnd(report.periodEnd);
+    setMessage(null);
+    setErrorMessage(null);
   };
 
-  const removeRow = (rowId: string) => {
-    setRows((currentRows) =>
-      currentRows.length > 1
-        ? currentRows.filter((row) => row.id !== rowId)
-        : currentRows,
-    );
-  };
-
-  //Logic that explains handling update.
   async function handleUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -92,21 +58,36 @@ function ReportDetail(props: ReportDetailProps) {
     setMessage(null);
     setErrorMessage(null);
 
+    if (!periodStart) {
+      setErrorMessage("Report period start is required.");
+      setIsSaving(false);
+      return;
+    }
+
+    if (!periodEnd) {
+      setErrorMessage("Report period end is required.");
+      setIsSaving(false);
+      return;
+    }
+
+    if (periodStart > periodEnd) {
+      setErrorMessage(
+        "Report period start cannot be later than the period end.",
+      );
+      setIsSaving(false);
+      return;
+    }
+
     const formData = new FormData();
 
-    formData.set("report-id", props._id);
+    formData.set("report-id", report._id);
 
     formData.set(
       "report-data",
       JSON.stringify({
-        transactionNumber: props.transactionNumber,
-        productId: productId.trim(),
-        productName: productName.trim(),
-        productPrice: Number(productPrice),
+        transactionNumber: report.transactionNumber,
         periodStart,
         periodEnd,
-        total,
-        rows,
       }),
     );
 
@@ -130,7 +111,8 @@ function ReportDetail(props: ReportDetailProps) {
         throw new Error(firstError);
       }
 
-      //What to do after update is finished.
+      setMessage(result?.message ?? "Report updated successfully.");
+
       setIsEditing(false);
 
       router.push("/admin/reports");
@@ -149,7 +131,7 @@ function ReportDetail(props: ReportDetailProps) {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${props.transactionNumber}"?`,
+      `Are you sure you want to delete the report for "${report.transactionNumber}"?`,
     );
 
     if (!confirmed) {
@@ -161,7 +143,8 @@ function ReportDetail(props: ReportDetailProps) {
     setErrorMessage(null);
 
     const formData = new FormData();
-    formData.set("report-id", props._id);
+
+    formData.set("report-id", report._id);
 
     try {
       const response = await fetch("/admin/routes/reports", {
@@ -189,40 +172,101 @@ function ReportDetail(props: ReportDetailProps) {
     }
   }
 
-  function handleCancelEdit() {
-    setIsEditing(false);
-
-    setProductId(props.productId);
-    setProductName(props.productName);
-    setProductPrice(props.productPrice.toString());
-    setPeriodStart(props.periodStart);
-    setPeriodEnd(props.periodEnd);
-    setRows(props.rows);
-
-    setErrorMessage(null);
-  }
-
   return (
-    <section className="mx-auto w-full max-w-3xl text-center border-4 border-prince-shadow/50">
+    <section className="mx-auto w-full max-w-5xl rounded-xl border-2 border-prince-yellow bg-prince-green/20 p-6 shadow-lg">
       {!isEditing ? (
         <>
-          <p>
-            Transaction Number:{prefix}
-            {""} {props.transactionNumber}
-          </p>
-          <p>Product ID: {props.productId}</p>
-          <p>Product Name: {props.productName}</p>
-          <p>
-            Product Price:{currency}
-            {""} {props.productPrice}
-          </p>
-          <p>
-            Period: {periodStart} - {periodEnd}
-          </p>
-          <p>
-            Total:{currency}
-            {""} {total}
-          </p>
+          <div className="mb-6">
+            <h1
+              className="text-2xl font-bold text-prince-yellow"
+              style={{
+                fontFamily: "var(--font-heading)",
+              }}
+            >
+              Report Details
+            </h1>
+          </div>
+
+          <div
+            className="grid gap-3 rounded-lg border border-prince-yellow bg-white p-5 text-left md:grid-cols-2"
+            style={{
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            <p>
+              <strong>Transaction Number:</strong> {prefix}
+              {report.transactionNumber}
+            </p>
+
+            <p>
+              <strong>Period:</strong>{" "}
+              {new Date(report.periodStart).toLocaleDateString()} -{" "}
+              {new Date(report.periodEnd).toLocaleDateString()}
+            </p>
+          </div>
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr
+                  className="bg-prince-green text-white"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                  }}
+                >
+                  <th className="border border-prince-yellow p-2 text-left">
+                    Product ID
+                  </th>
+
+                  <th className="border border-prince-yellow p-2 text-left">
+                    Product Name
+                  </th>
+
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Quantity
+                  </th>
+
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Unit Price
+                  </th>
+
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {report.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="border border-prince-yellow p-2">
+                      {row.productId}
+                    </td>
+
+                    <td className="border border-prince-yellow p-2">
+                      {row.productName}
+                    </td>
+
+                    <td className="border border-prince-yellow p-2 text-center">
+                      {row.qty}
+                    </td>
+
+                    <td className="border border-prince-yellow p-2 text-center">
+                      {currency} {row.price.toFixed(2)}
+                    </td>
+
+                    <td className="border border-prince-yellow p-2 text-center font-semibold">
+                      {currency} {(row.qty * row.price).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 text-right text-lg font-bold">
+            Grand Total: {currency} {report.total.toFixed(2)}
+          </div>
 
           {message && (
             <p className="mt-4 font-semibold text-green-700">{message}</p>
@@ -235,11 +279,7 @@ function ReportDetail(props: ReportDetailProps) {
           <div className="mt-6 flex justify-center gap-4">
             <button
               type="button"
-              onClick={() => {
-                setIsEditing(true);
-                setMessage(null);
-                setErrorMessage(null);
-              }}
+              onClick={handleStartEdit}
               className="rounded-md bg-prince-green px-5 py-2 font-bold text-prince-shadow/50 transition hover:bg-prince-orange"
             >
               Edit Report
@@ -258,8 +298,13 @@ function ReportDetail(props: ReportDetailProps) {
       ) : (
         <form
           onSubmit={handleUpdate}
-          className="mt-6 flex flex-col gap-4 text-left"
+          className="flex flex-col gap-4 text-left"
+          style={{
+            fontFamily: "var(--font-body)",
+          }}
         >
+          <h2 className="text-xl font-bold text-prince-yellow">Edit Report</h2>
+
           <div>
             <label
               htmlFor="transaction-number"
@@ -267,59 +312,13 @@ function ReportDetail(props: ReportDetailProps) {
             >
               Transaction Number
             </label>
+
             <input
               id="transaction-number"
               type="text"
-              value={props.transactionNumber}
+              value={`${prefix}${report.transactionNumber}`}
               readOnly
               className="w-full rounded-md border bg-slate-100 p-2"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="product-id" className="mb-1 block font-semibold">
-              Product ID
-            </label>
-
-            <input
-              id="product-id"
-              type="text"
-              value={productId}
-              onChange={(event) => setProductId(event.target.value)}
-              className="w-full rounded-md border p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="product-name" className="mb-1 block font-semibold">
-              Product Name
-            </label>
-
-            <input
-              id="product-name"
-              type="text"
-              value={productName}
-              onChange={(event) => setProductName(event.target.value)}
-              className="w-full rounded-md border p-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="product-price" className="mb-1 block font-semibold">
-              Product Price
-            </label>
-
-            <input
-              id="product-price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={productPrice}
-              onChange={(event) => setProductPrice(event.target.value)}
-              className="w-full rounded-md border p-2"
-              required
             />
           </div>
 
@@ -353,128 +352,65 @@ function ReportDetail(props: ReportDetailProps) {
             />
           </div>
 
-          <div className="mt-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-bold">Report Rows</h3>
+          <div className="mt-4 overflow-x-auto">
+            <h3 className="mb-3 text-lg font-bold">Transaction Items</h3>
 
-              <button
-                type="button"
-                onClick={addRow}
-                className="rounded-md bg-prince-green px-4 py-2 font-bold text-prince-shadow/50 transition hover:bg-prince-orange"
-              >
-                Add Row
-              </button>
-            </div>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-prince-green text-white">
+                  <th className="border border-prince-yellow p-2 text-left">
+                    Product ID
+                  </th>
 
-            <div className="flex flex-col gap-3">
-              {rows.map((row, index) => (
-                <div
-                  key={row.id}
-                  className="rounded-lg border border-prince-yellow bg-white p-4"
-                >
-                  <p className="mb-3 font-semibold">Row {index + 1}</p>
+                  <th className="border border-prince-yellow p-2 text-left">
+                    Product Name
+                  </th>
 
-                  <div className="grid gap-3 md:grid-cols-4">
-                    <div>
-                      <label
-                        htmlFor={`row-date-${row.id}`}
-                        className="mb-1 block text-sm font-semibold"
-                      >
-                        Date
-                      </label>
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Quantity
+                  </th>
 
-                      <input
-                        id={`row-date-${row.id}`}
-                        type="date"
-                        value={row.date}
-                        onChange={(event) =>
-                          updateRow(row.id, {
-                            date: event.target.value,
-                          })
-                        }
-                        className="w-full rounded-md border p-2"
-                        required
-                      />
-                    </div>
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Unit Price
+                  </th>
 
-                    <div>
-                      <label
-                        htmlFor={`row-qty-${row.id}`}
-                        className="mb-1 block text-sm font-semibold"
-                      >
-                        Quantity
-                      </label>
+                  <th className="border border-prince-yellow p-2 text-center">
+                    Total
+                  </th>
+                </tr>
+              </thead>
 
-                      <input
-                        id={`row-qty-${row.id}`}
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={row.qty}
-                        onChange={(event) =>
-                          updateRow(row.id, {
-                            qty: Number(event.target.value),
-                          })
-                        }
-                        className="w-full rounded-md border p-2"
-                        required
-                      />
-                    </div>
+              <tbody>
+                {report.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="border border-prince-yellow p-2">
+                      {row.productId}
+                    </td>
 
-                    <div>
-                      <label
-                        htmlFor={`row-price-${row.id}`}
-                        className="mb-1 block text-sm font-semibold"
-                      >
-                        Unit Price
-                      </label>
-                      <span className="text-xs font-semibold text-slate-600">
-                        {currency}
-                      </span>
+                    <td className="border border-prince-yellow p-2">
+                      {row.productName}
+                    </td>
 
-                      <input
-                        id={`row-price-${row.id}`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={row.price}
-                        onChange={(event) =>
-                          updateRow(row.id, {
-                            price: Number(event.target.value),
-                          })
-                        }
-                        className="w-full rounded-md border p-2"
-                        required
-                      />
-                    </div>
+                    <td className="border border-prince-yellow p-2 text-center">
+                      {row.qty}
+                    </td>
 
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(row.id)}
-                        disabled={rows.length <= 1}
-                        className="w-full rounded-md bg-prince-red px-4 py-2 font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Delete Row
-                      </button>
-                    </div>
-                  </div>
+                    <td className="border border-prince-yellow p-2 text-center">
+                      {currency} {row.price.toFixed(2)}
+                    </td>
 
-                  <p className="mt-3 text-right font-semibold">
-                    Row Total: {currency}
-                    {(row.qty * row.price).toFixed(2)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-4 text-right text-lg font-bold">
-              Grand Total: {currency}
-              {total.toFixed(2)}
-            </p>
+                    <td className="border border-prince-yellow p-2 text-center font-semibold">
+                      {currency} {(row.qty * row.price).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {message && <p className="font-semibold text-green-700">{message}</p>}
+          <div className="mt-4 text-right text-lg font-bold">
+            Current Report Total: {currency} {report.total.toFixed(2)}
+          </div>
 
           {errorMessage && (
             <p className="font-semibold text-red-600">{errorMessage}</p>
@@ -493,7 +429,7 @@ function ReportDetail(props: ReportDetailProps) {
               type="button"
               onClick={handleCancelEdit}
               disabled={isSaving}
-              className="rounded-md bg-slate-300 px-5 py-2 font-bold text-slate-800 transition hover:bg-slate-400 disabled:opacity-50"
+              className="rounded-md bg-slate-300 px-5 py-2 font-bold text-slate-800 disabled:opacity-50"
             >
               Cancel
             </button>

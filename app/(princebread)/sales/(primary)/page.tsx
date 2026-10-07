@@ -2,76 +2,16 @@ import React from "react";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/libauth";
-import { env } from "@/lib/env";
-import { getSalesClient, getReportsClient } from "@/lib/mongodb";
+import { getCurrentSalesHeaders } from "@/lib/business-logic-necessities/sales-headers";
 
 import SalesHeaderList from "../components/saleslist";
 
-import type { SalesHeader, Report } from "../../types";
+import type { SalesHeader } from "../../types";
 
-export const revalidate = 5;
+export const revalidate = 0;
 
 async function getSales(): Promise<SalesHeader[]> {
-  const client = await getSalesClient();
-
-  const db = client.db(env.MONGODB_SALES_DB || "sales");
-  const salesCollection = db.collection("sales");
-
-  const sales = await salesCollection.find().toArray();
-
-  return sales.map((sale) => ({
-    _id: sale._id?.toString?.() ?? sale._id?.toString(),
-
-    customerCode: sale.customerCode ?? "",
-
-    transactionNumber: sale.transactionNumber ?? "",
-
-    date: sale.date ?? "",
-
-    reportId: sale.reportId ?? "",
-
-    total: typeof sale.total === "number" ? sale.total : 0,
-
-    createdAt:
-      sale.createdAt instanceof Date
-        ? sale.createdAt.toISOString()
-        : sale.createdAt,
-  }));
-}
-
-async function getReports(): Promise<Report[]> {
-  const client = await getReportsClient();
-
-  const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-  const reportsCollection = db.collection("reports");
-
-  const reports = await reportsCollection.find().toArray();
-
-  return reports.map((report) => ({
-    _id: report._id?.toString() ?? "",
-
-    productId: report.productId ?? "",
-
-    productName: report.productName ?? "",
-
-    productPrice:
-      typeof report.productPrice === "number" ? report.productPrice : 0,
-
-    transactionNumber: report.transactionNumber ?? "",
-
-    periodStart: report.periodStart ?? "",
-
-    periodEnd: report.periodEnd ?? "",
-
-    rows: Array.isArray(report.rows) ? report.rows : [],
-
-    total: typeof report.total === "number" ? report.total : 0,
-
-    createdAt:
-      report.createdAt instanceof Date
-        ? report.createdAt.toISOString()
-        : report.createdAt,
-  }));
+  return getCurrentSalesHeaders();
 }
 
 export const metadata = {
@@ -88,7 +28,6 @@ export default async function SalesPage() {
   }
 
   const sales = await getSales();
-  const reports = await getReports();
 
   return (
     <>
@@ -110,7 +49,7 @@ export default async function SalesPage() {
         Displaying List of Sales Headers:
       </p>
 
-      <SalesHeaderList sales={sales} reports={reports} />
+      <SalesHeaderList sales={sales} />
     </>
   );
 }
