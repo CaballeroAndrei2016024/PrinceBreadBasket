@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { getProductClient } from "@/lib/mongodb";
 import AdminProductsList, {
   type AdminProduct,
-} from "../components/productlist";
+} from "../components/productslist";
 
 export const revalidate = 5; //5 second revalidation.
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getProductClient } from "@/lib/mongodb";
 import { ProductSchema } from "@/lib/validators/products";
+import { generateProductId } from "@/lib/product-id";
 
 export const runtime = "nodejs";
 
@@ -62,20 +63,12 @@ export async function GET() {
   }
 }
 
-//Post a product to the database.
+//POST- add a product to the database.
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const rawProductId = formData.get("product-id")?.toString().trim() ?? "";
-    // Debug: log rawProductId received
-    try {
-      console.log("Received rawProductId:", rawProductId);
-    } catch (e) {
-      console.error(
-        "The productId is not available right now. Please try again later",
-        e,
-      );
-    }
+
     const rawProductName =
       formData.get("product-name")?.toString().trim() ?? "";
     const rawProductPrice = formData.get("product-price")?.toString() ?? "";
@@ -85,8 +78,10 @@ export async function POST(request: NextRequest) {
       rawProductImage instanceof File ? rawProductImage : null;
     const parsedProductPrice = Number(rawProductPrice);
 
-    const validationResult = ProductSchema.safeParse({
-      productId: rawProductId,
+    // Validate submitted fields
+    const validationResult = ProductSchema.omit({
+      productId: true,
+    }).safeParse({
       productName: rawProductName,
       productPrice: parsedProductPrice,
       productImage,
@@ -102,12 +97,13 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
     const {
-      productId,
       productName,
       productPrice,
       productImage: uploadedFile,
     } = validationResult.data;
+
     const imageBuffer = Buffer.from(await uploadedFile.arrayBuffer());
     const imageBase64 = imageBuffer.toString("base64");
 
@@ -115,6 +111,10 @@ export async function POST(request: NextRequest) {
     const db = client.db(env.MONGODB_PRODUCTS_DB || "products");
     const productsCollection = db.collection("products");
 
+    // Generate the Product ID automatically.
+    const productId = await generateProductId(db);
+
+    // Save the new product in the database.
     const insertedProduct = await productsCollection.insertOne({
       productId,
       productName,
@@ -128,28 +128,27 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    // Debug: Check where data is written.
-    try {
-      console.log(
-        "Inserted into DB:",
-        db.databaseName,
-        "collection: products, id:",
-        insertedProduct.insertedId.toString(),
-      );
-    } catch (e) {
-      console.error("Failed to log insert info", e);
-    }
+    console.log(
+      "Inserted into DB:",
+      db.databaseName,
+      "collection: products, id:",
+      insertedProduct.insertedId.toString(),
+      "productId:",
+      productId,
+    );
 
     return NextResponse.json(
       {
         success: true,
         message: "Product created successfully",
         insertedId: insertedProduct.insertedId.toString(),
+        productId,
       },
       { status: 201 },
     );
   } catch (error) {
     console.error("Product submission failed:", error);
+
     return NextResponse.json(
       {
         success: false,

@@ -7,14 +7,16 @@ import { useSyncExternalStore } from "react";
 import { getSettings, subscribeSettings } from "@/lib/settings";
 
 const AdminProductRegistrationFormPage = () => {
-  //Settings
+  //Settings.
   const settings = useSyncExternalStore(
     subscribeSettings,
     getSettings,
     getSettings,
   );
   const currency = settings.currency || "PHP";
-  //Form submission states. Also handles Image submission.
+  // Product ID.
+  const [productId, setProductId] = useState("Product ID here");
+  //Use States and Submission checks.
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,6 +24,7 @@ const AdminProductRegistrationFormPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
+  //Function to handle image submission.
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -58,7 +61,7 @@ const AdminProductRegistrationFormPage = () => {
     console.log("Submitting form to /admin/routes/products");
 
     try {
-      // Debug: log form data entries to ensure product-id is included
+      // Debug: Ensure that productId is automatically encoded by the server.
       try {
         console.log("FormData entries:", Array.from(formData.entries()));
       } catch (e) {}
@@ -79,8 +82,22 @@ const AdminProductRegistrationFormPage = () => {
         const firstError = errorValues[0]?.[0] ?? result?.message;
         throw new Error(firstError || "Failed to save product.");
       }
+      const generatedProductId = result?.productId;
 
-      setMessage(result?.message || "Product created successfully.");
+      if (
+        typeof generatedProductId !== "string" ||
+        !/^P\d+$/i.test(generatedProductId)
+      ) {
+        throw new Error(
+          "Product was saved, but the server did not return a valid Product ID.",
+        );
+      }
+
+      setProductId(generatedProductId);
+      setMessage(
+        `Product created successfully. Product ID: ${generatedProductId}`,
+      );
+
       formElement.reset();
       setImagePreview(null);
       setFileName(null);
@@ -176,11 +193,11 @@ const AdminProductRegistrationFormPage = () => {
             }}
           >
             <input
-              type="text"
               id="product-id"
-              name="product-id"
-              placeholder="Product Id: P001"
-              className="rounded-md border border-prince-yellow  p-2 text-slate-700 focus:border-prince-green focus:outline-none"
+              type="text"
+              value={productId}
+              readOnly
+              className="rounded-md border border-prince-yellow bg-gray-100 p-2 text-slate-700 focus:border-prince-green focus:outline-none"
             />
             <input
               type="text"
