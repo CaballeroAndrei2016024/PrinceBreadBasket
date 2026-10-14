@@ -6,7 +6,7 @@ import type {
   AdminTransactionRow,
   AdminTransactionType,
 } from "@/app/admin/types";
-import TransactionDetails from "@/app/(princebread)/transactions/components/transactiondetails";
+import TransactionDetails from "@/app/(princebread)/transactions/components/transactionsdetails";
 
 type PageProps = {
   params: Promise<{

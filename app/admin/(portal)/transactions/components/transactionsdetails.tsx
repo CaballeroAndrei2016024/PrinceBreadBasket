@@ -17,12 +17,6 @@ type ProductOption = {
   productPrice: number;
 };
 
-type CustomerOption = {
-  _id: string;
-  customerCode: string;
-  customerName: string;
-};
-
 type Props = {
   transaction: AdminTransaction;
 };
@@ -44,17 +38,10 @@ function AdminTransactionDetails({ transaction }: Props) {
     {},
   );
 
-  //Customers.
-
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const transactionType = transaction.transactionType;
-  const [customerCode, setCustomerCode] = useState(
-    transaction.customerCode ?? "",
-  );
+  const customerCode = transaction.customerCode ?? "";
   const [transactionDate, setTransactionDate] = useState(transaction.date);
   const [rows, setRows] = useState<AdminTransactionRow[]>(
     transaction.rows.map((row) => ({
@@ -115,42 +102,6 @@ function AdminTransactionDetails({ transaction }: Props) {
     }
 
     loadProducts();
-  }, []);
-
-  // Load customers so Customer Code can be selected from the database.
-  useEffect(() => {
-    async function loadCustomers() {
-      try {
-        const response = await fetch("/admin/routes/customers", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load customer options.");
-        }
-
-        const result = await response.json();
-
-        const options = (result?.customers ?? [])
-          .filter(
-            (customer: CustomerOption) =>
-              customer.customerCode && customer.customerCode.trim(),
-          )
-          .map((customer: CustomerOption) => ({
-            _id: customer._id,
-            customerCode: customer.customerCode,
-            customerName: customer.customerName ?? "",
-          }));
-
-        setCustomers(options);
-      } catch (error) {
-        console.error("Failed to load customers:", error);
-      } finally {
-        setIsLoadingCustomers(false);
-      }
-    }
-
-    loadCustomers();
   }, []);
 
   // Add row
@@ -256,8 +207,6 @@ function AdminTransactionDetails({ transaction }: Props) {
   // Cancel editing
   const handleCancelEdit = () => {
     setIsEditing(false);
-
-    setCustomerCode(transaction.customerCode ?? "");
     setTransactionDate(transaction.date);
 
     setRows(
@@ -326,8 +275,8 @@ function AdminTransactionDetails({ transaction }: Props) {
       total: grandTotal,
     };
 
-    if (!transaction._id) {
-      setErrorMessage("Transaction ID is missing.");
+    if (!transaction.transactionNumber) {
+      setErrorMessage("Transaction Number is missing.");
       setIsSaving(false);
       return;
     }
@@ -335,7 +284,7 @@ function AdminTransactionDetails({ transaction }: Props) {
     const formData = new FormData();
 
     // Match the PUT route for this:
-    formData.set("transactions-id", transaction._id);
+    formData.set("transaction-number", transaction.transactionNumber);
 
     formData.set("transactions-data", JSON.stringify(transactionData));
 
@@ -596,27 +545,14 @@ function AdminTransactionDetails({ transaction }: Props) {
               Customer Code
             </label>
 
-            <select
+            <input
               id="customer-code"
+              type="text"
               value={customerCode}
-              onChange={(event) => setCustomerCode(event.target.value)}
-              disabled={isLoadingCustomers}
-              className="w-full rounded-md border p-2 text-slate-700 disabled:cursor-not-allowed disabled:bg-gray-100"
-            >
-              <option value="">
-                {isLoadingCustomers
-                  ? "Loading customers..."
-                  : customers.length === 0
-                    ? "No customers available"
-                    : "Select Customer"}
-              </option>
-
-              {customers.map((customer) => (
-                <option key={customer._id} value={customer.customerCode}>
-                  {customer.customerCode} - {customer.customerName}
-                </option>
-              ))}
-            </select>
+              readOnly
+              aria-readonly="true"
+              className="w-full cursor-not-allowed rounded-md border bg-slate-100 p-2 text-slate-700"
+            />
           </div>
 
           <div>

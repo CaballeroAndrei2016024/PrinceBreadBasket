@@ -348,6 +348,23 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Customer Code cannot be changed after creation.
+    const existingCustomerCode = String(existingTransaction.customerCode ?? "");
+
+    const submittedCustomerCode = String(
+      transactionData.customerCode ?? "",
+    ).trim();
+
+    if (submittedCustomerCode !== existingCustomerCode.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Customer Code cannot be changed.",
+        },
+        { status: 400 },
+      );
+    }
+
     const pricedRows = await priceTransactionRows(transactionData.rows);
 
     if ("error" in pricedRows) {
@@ -363,9 +380,10 @@ export async function PUT(request: NextRequest) {
     const validationResult = TransactionSchema.safeParse({
       ...transactionData,
 
-      // Keep these values tied to the original transaction.
+      // Keep immutable values tied to the original transaction.
       transactionNumber: existingTransaction.transactionNumber,
       transactionType: existingTransaction.transactionType,
+      customerCode: existingCustomerCode.trim(),
 
       rows: pricedRows.rows,
     });
@@ -408,7 +426,7 @@ export async function PUT(request: NextRequest) {
     const updatedTransactionsData = {
       transactionNumber: existingTransaction.transactionNumber,
       transactionType: existingTransaction.transactionType,
-      customerCode: transaction.customerCode,
+      customerCode: existingTransaction.customerCode ?? "",
       date: transaction.date,
       rows: transaction.rows,
       total: calculatedTotal,

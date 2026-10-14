@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import AdminTransactionDetails from "../components/transactiondetails";
+import AdminTransactionDetails from "../components/transactionsdetails";
 import { env } from "@/lib/env";
 import { getTransactionsClient } from "@/lib/mongodb";
 import type {
