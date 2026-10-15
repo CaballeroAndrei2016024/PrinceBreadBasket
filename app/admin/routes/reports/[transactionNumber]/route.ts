@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { env } from "@/lib/env";
-import { getReportsClient } from "@/lib/mongodb";
+
+import { getCurrentSalesReportByTransactionNumber } from "@/lib/business-logic-necessities/sales-reports";
 
 export const runtime = "nodejs";
 
-//Find a report by transactionNumber.
+// Find a report using its transaction number and current Sales Header data.
 export async function GET(
   _request: Request,
   {
@@ -17,7 +17,6 @@ export async function GET(
 ) {
   try {
     const { transactionNumber } = await params;
-
     const normalizedTransactionNumber = transactionNumber.trim();
 
     if (!normalizedTransactionNumber) {
@@ -30,60 +29,24 @@ export async function GET(
       );
     }
 
-    const client = await getReportsClient();
-
-    if (!client) {
-      throw new Error("Database client is null. Connection failed.");
-    }
-
-    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-
-    const reportsCollection = db.collection("reports");
-
-    const report = await reportsCollection.findOne({
-      transactionNumber: normalizedTransactionNumber,
-    });
+    const report = await getCurrentSalesReportByTransactionNumber(
+      normalizedTransactionNumber,
+    );
 
     if (!report) {
       return NextResponse.json(
         {
           success: false,
-          message: "Report not found.",
+          message: "Report not found or its Sales Header no longer exists.",
         },
         { status: 404 },
       );
     }
 
-    const serializedReport = {
-      ...report,
-
-      _id: report._id.toString(),
-
-      periodStart:
-        report.periodStart instanceof Date
-          ? report.periodStart.toISOString().split("T")[0]
-          : report.periodStart,
-
-      periodEnd:
-        report.periodEnd instanceof Date
-          ? report.periodEnd.toISOString().split("T")[0]
-          : report.periodEnd,
-
-      createdAt:
-        report.createdAt instanceof Date
-          ? report.createdAt.toISOString()
-          : report.createdAt,
-
-      updatedAt:
-        report.updatedAt instanceof Date
-          ? report.updatedAt.toISOString()
-          : report.updatedAt,
-    };
-
     return NextResponse.json(
       {
         success: true,
-        report: serializedReport,
+        report,
       },
       { status: 200 },
     );

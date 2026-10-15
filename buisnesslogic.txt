@@ -6,7 +6,7 @@ They can then select products and enter quantities.
 -Sales Transactions are only for Sales Headers, btw.
 -Changes to Sales Transactions (for Sales Headers) as well as Beginning Inventory and Additions Transactions (for Sales Logs) will be reflected as well.
 Reports:
--Reports comes from the Sales Header as snapshots, and do not store Sales Header Id.
+-Reports comes from the Sales Header, and do not store Sales Header Id.
 Logs:
 -Sales Logs fetch Transactions within the selected date range and group rows by product.
 -The same logic of: 

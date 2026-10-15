@@ -3,60 +3,25 @@ import { env } from "@/lib/env";
 import { getReportsClient } from "@/lib/mongodb";
 import { getCurrentSalesHeaderByTransactionNumber } from "@/lib/business-logic-necessities/sales-headers";
 import { ReportSchema } from "@/lib/validators/reports";
+import { getCurrentSalesReports } from "@/lib/business-logic-necessities/sales-reports";
 
 export const runtime = "nodejs";
 
-// Interface for reports documents.
-interface ReportsDocument {
-  _id?: { toString?: () => string } | string;
-  createdAt?: { toISOString?: () => string } | string | Date;
-  [key: string]: unknown;
-}
-
-//GET- Fetches a report from the database.
+// GET - Fetch reports using the current Sales Header data.
 export async function GET() {
   try {
-    const client = await getReportsClient();
-    // Client check.
-    if (!client) {
-      throw new Error("Database client is null. Connection failed.");
-    }
-    const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-    const reportsCollection = db.collection("reports");
-    const reports = await reportsCollection
-      .find({})
-      .project({
-        _id: 1,
-        transactionNumber: 1,
-        productId: 1,
-        productName: 1,
-        productPrice: 1,
-        periodStart: 1,
-        periodEnd: 1,
-        total: 1,
-        rows: 1,
-        createdAt: 1,
-      })
-      .toArray();
-    // Serialize ObjectId to string so JSON can be sent to the client
-    const serialized = reports.map((p: ReportsDocument) => ({
-      ...p,
-      _id: p._id?.toString?.() ?? p._id,
-      createdAt:
-        p.createdAt &&
-        typeof p.createdAt !== "string" &&
-        "toISOString" in p.createdAt &&
-        typeof p.createdAt.toISOString === "function"
-          ? p.createdAt.toISOString()
-          : p.createdAt,
-    }));
+    const reports = await getCurrentSalesReports();
 
     return NextResponse.json(
-      { success: true, reports: serialized },
+      {
+        success: true,
+        reports,
+      },
       { status: 200 },
     );
   } catch (error) {
     console.error("Failed to fetch reports:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -120,8 +85,12 @@ export async function POST(request: NextRequest) {
 
     // Check what URI/DB is running.
     try {
-      console.log("MONGODB_REPORTS_URI=", env.MONGODB_REPORTS_URI);
-      console.log("MONGODB_REPORTS_DB=", env.MONGODB_REPORTS_DB);
+      console.log(
+        "MONGODB_REPORTS_URI present?",
+        Boolean(env.MONGODB_REPORTS_URI),
+        "MONGODB_REPORTS_DB present?",
+        Boolean(env.MONGODB_REPORTS_DB),
+      );
     } catch (e) {
       console.error("Failed to log env vars for MongoDB", e);
     }

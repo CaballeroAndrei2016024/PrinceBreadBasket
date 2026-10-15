@@ -1,47 +1,14 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/libauth";
-import { env } from "@/lib/env";
-import { getReportsClient } from "@/lib/mongodb";
+import { getCurrentSalesReports } from "@/lib/business-logic-necessities/sales-reports";
 import ReportsList from "../components/reportslist";
-import type { Report } from "../../types";
 
 export const revalidate = 5; //5 second revalidation.
 
+//Get reports using the current state of the sales headers.
 async function getReports() {
-  //Client check.
-  const client = await getReportsClient();
-  if (!client) {
-    throw new Error("Database client is null. Connection failed.");
-  }
-  const db = client.db(env.MONGODB_REPORTS_DB || "reports");
-  const reportsCollection = db.collection("reports");
-
-  const reports = await reportsCollection.find().toArray();
-  return reports.map((report) => ({
-    ...report,
-
-    _id: report._id?.toString?.() ?? report._id,
-
-    productId: report.productId ?? "",
-    productName: report.productName ?? "",
-    productPrice:
-      typeof report.productPrice === "number" ? report.productPrice : 0,
-
-    transactionNumber: report.transactionNumber ?? "",
-
-    periodStart: report.periodStart ?? "",
-    periodEnd: report.periodEnd ?? "",
-
-    rows: Array.isArray(report.rows) ? report.rows : [],
-
-    total: typeof report.total === "number" ? report.total : 0,
-
-    createdAt:
-      report.createdAt instanceof Date
-        ? report.createdAt.toISOString()
-        : report.createdAt,
-  })) as Report[];
+  return getCurrentSalesReports();
 }
 
 export const metadata = {
